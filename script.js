@@ -35,7 +35,7 @@ let normalViewButton, tradeViewButton, itemEditorModeTitle, normalItemEntryHint,
 let tradeOfferNameInput, tradeOfferQuantityInput, tradeWantNameInput, tradeWantQuantityInput, tradeOfferFuzzyMatchesHolder, tradeWantFuzzyMatchesHolder, tradeDisplay;
 let tradeDraftSummary, tradeCancelEditButton;
 let tradeSelectionModeStateSpan, tradeUnselectedVisibilityStateSpan, disableOutsideTradeSelectionModeElems;
-let bottomText, screenshotRegion, screenshotPriceHolder, leftWatermark;
+let bottomText, screenshotRegion, screenshotPriceHolder, rightWatermark;
 let stylingDrawer, stylingDrawerOpenButton, stylingDrawerCloseButton, advancedSettingsDrawerContent;
 let generatedImageBackgroundModeInput, generatedImagePresetInput, generatedImagePresetLabel, generatedImageSolidPaletteField, generatedImageBackgroundColorInput, generatedImageGradientColorInput, generatedImageGradientAngleInput, generatedImageGradientAngleLabel, generatedImageBorderColorInput, generatedImageBorderThicknessInput, generatedImageBorderThicknessOutput, generatedImageTextColorInput, generatedImageFontInput, generatedImageBottomTextInput, generatedImageShowBottomTextInput, generatedImageCreditInput, generatedImageGradientFields;
 let generatedImagePaddingTopInput, generatedImagePaddingRightInput, generatedImagePaddingBottomInput, generatedImagePaddingLeftInput, generatedImagePaddingTopOutput, generatedImagePaddingRightOutput, generatedImagePaddingBottomOutput, generatedImagePaddingLeftOutput, generatedImagePaddingResetButton;
@@ -152,7 +152,7 @@ $(document).ready(() =>
     bottomText = $("#bottomText");
     screenshotRegion = $("#screenshotRegion");
     screenshotPriceHolder = $("#screenshotPriceHolder");
-    leftWatermark = $("#leftWatermark");
+    rightWatermark = $("#rightWatermark");
     stylingDrawer = $("#stylingDrawer");
     stylingDrawerOpenButton = $("#stylingDrawerOpenButton");
     stylingDrawerCloseButton = $("#stylingDrawerCloseButton");
@@ -2985,7 +2985,7 @@ function applyGeneratedImageStyles()
     screenshotRegion.toggleClass("hideGeneratedItemQuantities", !generatedImageShowItemQuantityInput.prop("checked"));
     screenshotRegion.toggleClass("hideGeneratedItemPrices", !generatedImageShowItemPriceInput.prop("checked"));
     itemInfinityQuantityButton.prop("hidden", !generatedImageEnableInfinityInput.prop("checked"));
-    leftWatermark.text(generatedImageCreditInput.val());
+    rightWatermark.text(generatedImageCreditInput.val());
     fitGeneratedImageBottomText();
     updateGeneratedImageColorSwatches();
 }

@@ -316,7 +316,7 @@ function applyGeneratedImageStyles()
     screenshotRegion.toggleClass("hideGeneratedItemQuantities", !generatedImageShowItemQuantityInput.prop("checked"));
     screenshotRegion.toggleClass("hideGeneratedItemPrices", !generatedImageShowItemPriceInput.prop("checked"));
     itemInfinityQuantityButton.prop("hidden", !generatedImageEnableInfinityInput.prop("checked"));
-    leftWatermark.text(generatedImageCreditInput.val());
+    rightWatermark.text(generatedImageCreditInput.val());
     fitGeneratedImageBottomText();
     updateGeneratedImageColorSwatches();
 }
