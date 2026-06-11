@@ -1524,10 +1524,56 @@ select:focus
 }
 
 input[type="range"],
-input[type="checkbox"],
 input[type="radio"]
 {
     accent-color: #f5f7f7;
+}
+
+input[type="checkbox"]
+{
+    position: relative;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid #9ba8aa;
+    border-radius: 3px;
+    margin: 0;
+    background: #101719;
+    cursor: pointer;
+}
+
+input[type="checkbox"]:checked
+{
+    border-color: #fff;
+    background: #fff;
+}
+
+input[type="checkbox"]:checked::after
+{
+    position: absolute;
+    top: 2px;
+    left: 5px;
+    width: 4px;
+    height: 8px;
+    border: solid #080b0c;
+    border-width: 0 2px 2px 0;
+    content: "";
+    transform: rotate(45deg);
+}
+
+input[type="checkbox"]:focus-visible
+{
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+input[type="checkbox"]:disabled
+{
+    cursor: default;
+    opacity: 0.5;
 }
 
 .editorPanel

@@ -2673,6 +2673,7 @@ const generatedImageTextColors = ["#ffffff", "#000000", "#ff3b30", "#007aff", "#
 const suggestionFormEndpoint = "https://formspree.io/f/mnjrezjw";
 const generatedImageDefaultPadding = "10";
 const generatedImageMaxPadding = 10;
+let stylingDrawerViewportWasMobile = null;
 
 function clampGeneratedImagePadding(value)
 {
@@ -2890,11 +2891,16 @@ function getIsMobileStylingDrawer()
 
 function syncStylingDrawerForViewport()
 {
-    if(getIsMobileStylingDrawer())
-        stylingDrawer.prop("hidden", true);
+    const isMobile = getIsMobileStylingDrawer();
+    if(isMobile)
+    {
+        if(stylingDrawerViewportWasMobile !== true)
+            stylingDrawer.prop("hidden", true);
+    }
     else
         stylingDrawer.prop("hidden", false);
 
+    stylingDrawerViewportWasMobile = isMobile;
     updateStylingDrawerToggle();
     rescaleScreenshotRegion();
 }
