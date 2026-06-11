@@ -2,120 +2,400 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <!-- https://search.google.com/search-console/about -->
-        <!-- Making it self-closing/closing at all shouldn't matter, but this was the way that google provided the link, so I'm keeping it that way -->
+
         <meta name="google-site-verification" content="DTNkB2nNCvd3ms-A5Y9mVcCtJJj-9jl-TIvuNIWZVjY" />
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>Hay Day Image Generator</title>
+        <title>Hay Day Trading</title>
 
-        <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+        <link rel="icon" type="image/png" href="images/hayday-trading-mark.png">
 
-        <!-- Using the unminified version since it might help me debug any issues; might want to eventually use https://code.jquery.com/jquery-3.6.4.min.js -->
-        <!-- Got the integrity sha/hash using https://www.srihash.org/ (found out about it here: https://stackoverflow.com/questions/51254596/how-to-get-the-integrity-value-for-a-jquery-version-for-script ); I decided to stick with the sha384 it defaults to.  I'm unsure whether to append the attribute: referrerpolicy="no-referrer" -->
         <script src="https://code.jquery.com/jquery-3.6.4.js" integrity="sha384-SCPawFAkxFucxzK6X4Gpg3lmBZqjjmM8ghZCRH8hW4C+k4wCVXFd862J1juShkQ7" crossorigin="anonymous"></script>
-        <!-- Useful for finding which deprecated functions I'm using ( https://github.com/jquery/jquery-migrate/ )-->
-        <!-- <script src="https://code.jquery.com/jquery-migrate-3.1.0.js"></script> -->
 
-        <!-- Using the unminified version of math js; this is mainly for processing equations in the quantity input field, since I want to avoid using eval() [it also processes code, not just equations].  More info here: https://mathjs.org/download.html and https://cdnjs.com/libraries/mathjs -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.7.0/math.js" integrity="sha512-jVMFsAksn8aljb9IJ+3OCAq38dJpquMBjgEuz7Q5Oqu5xenfin/jxdbKw4P5eKjUF4xiG/GPT5CvCX3Io54gyA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.js" integrity="sha512-zPMZ/3MBK+R1rv6KcBFcf7rGwLnKS+xtB2OnWkAxgC6anqxlDhl/wMWtDbiYI4rgi/NrCJdXrmNGB8pIq+slJQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/fuzzysort/2.0.4/fuzzysort.js" integrity="sha512-sdAWRZSPnL/EbXixTyBhffFggsxlPrxEMLKvseTBMfY3MGxYvXvm83S/WddNpx1tXPylK5warEPp7uu1yiNsgA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-        <link rel="stylesheet" href="style.css?v=3.2">
+        <script src="https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js"></script>
 
+        <link rel="stylesheet" href="style.css?v=5.44">
 
-        <script src="script.js?v=3.2"></script>
+        <script src="script.js?v=5.47"></script>
     </head>
     <body>
-        <h2>Options</h2>
+        <header class="appHeader">
+            <div class="appBrand">
+                <img src="images/hayday-trading-mark.png" alt="" class="appBrandIcon">
+                <div>
+                    <h1>Hay Day Trading</h1>
+                    <p>Build clean listings for your next trade</p>
+                </div>
+            </div>
+            <p class="appHeaderCredit">Made By: Gamingwith3K</p>
+        </header>
 
-        <label for="itemsPerRowSlider">Items Per Row</label>
-        <input type="range" min="1" max="12" id="itemsPerRowSlider" style="vertical-align: sub;"> <!-- seems to align slightly better than "vertical-align: middle" -->
-        <label id="itemsPerRowLabel">8</label>
+        <div class="appShell">
+            <main class="mainWorkspace">
+                <section class="workspaceTopbar">
+                    <div class="modeSwitch" aria-label="View selection">
+                        <button id="normalViewButton" class="selected">Buy / Sell</button>
+                        <button id="tradeViewButton">Trade</button>
+                    </div>
+                    <div class="workspaceUtilities">
+                        <button id="suggestionOverlayShowButton"><i data-lucide="message-square-plus"></i>Suggestion</button>
+                        <a class="buttonLink" href="https://jjcuber.github.io/HayDayImageGeneratorSite/" target="_blank" rel="noopener noreferrer"><i data-lucide="external-link"></i>Original JJCUBER</a>
+                    </div>
+                </section>
 
-        <button id="settingsOverlayShowButton" style="margin-left: 20px;">Settings</button>
-        <button id="changelogOverlayShowButton">Changelog</button>
-        <!-- TODO -- impl -->
-        <!-- <button id="tutorialOverlayShowButton">Tutorial</button> -->
-        <button id="contactOverlayShowButton">Contact</button>
-        <button id="tryNewSiteButton">Try <b>New</b> Site</button>
+                <section class="editorPanel">
+                    <div class="editorPanelHeader">
+                        <h2 id="itemEditorHeading">
+                            <span id="itemEditorModeTitle">Add/Modify Item</span>
+                            <small id="normalItemEntryHint"><small>(Press enter inside any textbox to submit pending item changes)</small></small>
+                        </h2>
+                        <div class="rowCountControl">
+                            <label id="itemsPerRowOptionLabel" for="itemsPerRowSlider">Items Per Row</label>
+                            <input type="range" min="1" max="12" id="itemsPerRowSlider">
+                            <label id="itemsPerRowLabel">8</label>
+                        </div>
+                    </div>
 
-        <div style="height: 20px;"></div>
-        <hr>
+                    <div id="normalItemEntryArea" class="entryLine">
 
-        <h2>
-            Add/Modify Item
-            <small><small>(Press enter inside any textbox to submit pending item changes)</small></small>
-        </h2>
+            <label for="itemNameInput">Name</label>
 
-        <!-- Label MUST be outside of the div for the dimensions of the autocomplete/fuzzy match options to be proper -->
-        <label for="itemNameInput">Name</label>
-        <!-- this div needs to have position be relative in order for 100% width of the inner div to not cover the whole document ( https://stackoverflow.com/questions/6625116/css-position-absolute-and-full-width-problem ) -->
-        <div style="display: inline-block; position: relative;">
-            <!-- using em to be relative to the font size, since the font size is increased on iOS (to 16px) -->
-            <input type="text" id="itemNameInput" style="width: 8em;" autocomplete="off">
-            <div id="itemNameFuzzyMatchesHolder" class="fuzzyMatchesHolder"></div>
-        </div>
+            <div style="display: inline-block; position: relative;">
 
-        <label for="itemQuantityInput">Quantity</label>
-        <input type="text" id="itemQuantityInput" style="width: 3em;">
+                <input type="text" id="itemNameInput" style="width: 8em;" autocomplete="off">
+                <div id="itemNameFuzzyMatchesHolder" class="fuzzyMatchesHolder"></div>
+            </div>
 
-        <label for="itemPriceOrMultiplierInput">Price/Multiplier</label>
-        <input type="text" id="itemPriceOrMultiplierInput" style="width: 3em;">
+            <label for="itemQuantityInput">Quantity</label>
+            <input type="text" id="itemQuantityInput" style="width: 3em;">
+            <button type="button" id="itemInfinityQuantityButton" class="quantitySymbolButton" title="Use infinite quantity" aria-label="Use infinite quantity" hidden>&infin;</button>
 
-        <button id="itemSubmitButton" style="margin-left: 10px;">Submit</button>
-        <button id="itemDeleteButton" class="disableInPriceCalculationMode">Delete</button>
+            <label for="itemPriceOrMultiplierInput">Price/Multiplier</label>
+            <input type="text" id="itemPriceOrMultiplierInput" style="width: 3em;">
 
-        <br>
-        <div style="height: 2px;"></div>
+            <button id="itemSubmitButton" style="margin-left: 10px;"><i data-lucide="plus"></i>Submit</button>
+            <button id="itemDeleteButton" class="disableInPriceCalculationMode"><i data-lucide="trash-2"></i>Delete</button>
+                    </div>
 
-        <button id="clearAllButton" class="disableInPriceCalculationMode">Clear All</button>
-        <button id="copyImageToClipboardButton">Copy Image to Clipboard</button>
-        <button id="copyAsTextListButton">Copy as Text List</button>
-        <div id="copyImageLoadingWheel" class="loading" hidden></div>
-        <br>
-        <div style="height: 2px;"></div>
-        <button id="priceCalculationToggleButton"><span id="priceCalculationModeStateSpan">Enable</span> Price Calculation Mode</button>
-        <button id="selectAllButton" class="disableOutsidePriceCalculationMode">Select All</button>
-        <button id="clearSelectionButton" class="disableOutsidePriceCalculationMode">Clear Selection</button>
-        <button id="subtractSelectedQuantitiesButton" class="disableOutsidePriceCalculationMode">Subtract Selected Quantities</button>
-        <button id="deleteSelectedButton" class="disableOutsidePriceCalculationMode">Delete Selected</button>
-        <br>
-        <div style="height: 2px;"></div>
-        <button id="resetCustomValuesButton" class="disableOutsidePriceCalculationMode">Reset Custom Values</button>
-        <button id="equationVisibilityToggleButton" class="disableOutsidePriceCalculationMode"><span id="equationVisibilityStateSpan">Show</span> Equation</button>
-        <button id="unselectedItemsVisibilityToggleButton" class="disableOutsidePriceCalculationMode"><span id="unselectedItemsVisibilityStateSpan">Hide</span> Unselected</button>
+                    <div id="tradeItemEntryArea" class="entryLine" hidden>
+            <div class="tradeInputLine">
+            <label for="tradeOfferNameInput">Have</label>
+            <div style="display: inline-block; position: relative;">
+                <input type="text" id="tradeOfferNameInput" style="width: 8em;" autocomplete="off">
+                <div id="tradeOfferFuzzyMatchesHolder" class="fuzzyMatchesHolder"></div>
+            </div>
 
-        <div style="height: 15px;"></div>
-        <hr>
-        <div id="totalSelectedPriceArea" hidden>
-            <h2>Total Selected Price</h2>
-            <p id="totalSelectedPriceHolder"></p>
+            <label for="tradeOfferQuantityInput">Quantity</label>
+            <input type="text" id="tradeOfferQuantityInput" style="width: 4em;">
+
+            <span class="tradeFormDivider">for</span>
+
+            <label for="tradeWantNameInput">Want</label>
+            <div style="display: inline-block; position: relative;">
+                <input type="text" id="tradeWantNameInput" style="width: 8em;" autocomplete="off">
+                <div id="tradeWantFuzzyMatchesHolder" class="fuzzyMatchesHolder"></div>
+            </div>
+
+            <label for="tradeWantQuantityInput">Quantity</label>
+            <input type="text" id="tradeWantQuantityInput" style="width: 4em;">
+            <button id="tradeSubmitButton"><i data-lucide="save"></i>Save Trade Row</button>
+            <button id="tradeCancelEditButton" hidden>Cancel Edit</button>
+            </div>
+
+            <div id="tradeDraftSummary" hidden></div>
+
+            <div class="tradeActionLine">
+            <button id="tradeOfferAddButton"><i data-lucide="plus"></i>Add to Have</button>
+            <button id="tradeWantAddButton"><i data-lucide="plus"></i>Add to Want</button>
+            <button id="tradeClearButton" disabled><i data-lucide="rotate-ccw"></i>Reset Current Row</button>
+            </div>
+
+            <div class="tradeSelectionToolbar">
+            <button id="tradeClearAllButton"><i data-lucide="trash-2"></i>Clear All</button>
+            <button class="copyImageToClipboardButton"><i data-lucide="copy"></i>Copy Image</button>
+            <div class="copyImageLoadingWheel loading" hidden></div>
+            <span class="copyImageStatus" role="status" aria-live="polite"></span>
+            </div>
+
+            <div class="tradeSelectionToolbar">
+            <button id="tradeSelectionToggleButton"><i data-lucide="list-checks"></i><span id="tradeSelectionModeStateSpan">Enable</span> Trade Selection Mode</button>
+            <button id="tradeSelectAllButton" class="disableOutsideTradeSelectionMode"><i data-lucide="check-square"></i>Select All</button>
+            <button id="tradeClearSelectionButton" class="disableOutsideTradeSelectionMode"><i data-lucide="square"></i>Clear Selection</button>
+            </div>
+
+            <div class="tradeSelectionToolbar">
+            <button id="tradeDeleteSelectedButton" class="disableOutsideTradeSelectionMode"><i data-lucide="trash-2"></i>Delete Selected</button>
+            <button id="tradeUnselectedVisibilityToggleButton" class="disableOutsideTradeSelectionMode"><i data-lucide="eye-off"></i><span id="tradeUnselectedVisibilityStateSpan">Hide</span> Unselected</button>
+            </div>
+                    </div>
+
+                    <div class="actionToolbar hideInTradeView">
+                        <button id="clearAllButton" class="disableInPriceCalculationMode hideInTradeView"><i data-lucide="trash-2"></i>Clear All</button>
+                        <button class="copyImageToClipboardButton"><i data-lucide="copy"></i>Copy Image</button>
+                        <button id="copyAsTextListButton" class="hideInTradeView"><i data-lucide="clipboard-list"></i>Copy Text List</button>
+                        <div class="copyImageLoadingWheel loading" hidden></div>
+                        <span class="copyImageStatus" role="status" aria-live="polite"></span>
+                    </div>
+                    <div class="actionToolbar stylingDrawerMobileToolbar">
+                        <button id="stylingDrawerOpenButton"><i data-lucide="panel-right-open"></i>Image Styling</button>
+                    </div>
+                    <div class="priceCalculationToolbars hideInTradeView">
+            <div class="actionToolbar">
+            <button id="priceCalculationToggleButton"><span id="priceCalculationModeStateSpan">Enable</span> Price Calculation Mode</button>
+            <button id="selectAllButton" class="disableOutsidePriceCalculationMode">Select All</button>
+            <button id="clearSelectionButton" class="disableOutsidePriceCalculationMode">Clear Selection</button>
+            </div>
+            <div class="actionToolbar">
+            <button id="subtractSelectedQuantitiesButton" class="disableOutsidePriceCalculationMode">Subtract Selected Quantities</button>
+            <button id="deleteSelectedButton" class="disableOutsidePriceCalculationMode">Delete Selected</button>
+            <button id="resetCustomValuesButton" class="disableOutsidePriceCalculationMode">Reset Custom Values</button>
+            <button id="equationVisibilityToggleButton" class="disableOutsidePriceCalculationMode"><span id="equationVisibilityStateSpan">Show</span> Equation</button>
+            <button id="unselectedItemsVisibilityToggleButton" class="disableOutsidePriceCalculationMode"><span id="unselectedItemsVisibilityStateSpan">Hide</span> Unselected</button>
+            </div>
+                    </div>
+                </section>
+
+                <div id="totalSelectedPriceArea" hidden>
             <p id="totalSelectedPriceEquationHolder" hidden></p>
             <p id="totalSelectedPriceMessageHolder" hidden></p>
-            <hr>
-        </div>
-        <small>You can click on any item's image, quantity, or price to autofill all their information and focus the corresponding text box!  (This includes the bottom text.)</small>
-        <br>
-        <small id="priceCalculationModeSelectionInfo" hidden>Click = individual toggle, Shift+Click = range additive, Alt+Click = range subtractive, Ctrl+Click = range toggle (invert)</small>
-        <div style="height: 20px;"></div>
+                </div>
+                <small id="normalItemClickInfo" class="workspaceHint">Click an item's image, quantity, or price to edit it.</small>
+                <small id="priceCalculationModeSelectionInfo" class="workspaceHint" hidden>Click = individual toggle, Shift+Click = range additive, Alt+Click = range subtractive, Ctrl+Click = range toggle (invert)</small>
 
-        <div id="screenshotRegion">
+                <section class="previewStage">
+                    <div class="previewCanvas">
+                    <div id="screenshotRegion">
+            <div id="tradeDisplay" hidden></div>
             <table id="itemTable"></table>
+            <p id="normalItemsPlaceholder">Add items to preview your Buy / Sell list</p>
 
             <p id="bottomText"></p>
             <p id="screenshotPriceHolder"></p>
-            <p class="watermark">jjcuber.github.io/hdig</p>
+            <div id="imageCredits">
+                <p id="leftWatermark" class="watermark">Gamingwith3K</p>
+                <p id="rightWatermark" class="watermark">Made By: gamingwith3K</p>
+            </div>
+                    </div>
+                    </div>
+                </section>
+            </main>
+
+        <aside id="stylingDrawer">
+            <div class="stylingDrawerHeader">
+                <button id="stylingDrawerCloseButton" class="stylingDrawerCloseButton" title="Collapse styling options" aria-label="Collapse styling options"><i data-lucide="chevron-right"></i></button>
+                <h2>Image Styling</h2>
+            </div>
+
+            <div class="stylingDrawerContent">
+                <details class="stylingSection" open>
+                    <summary>Background</summary>
+                    <div class="stylingSectionGrid">
+                        <label for="generatedImageBackgroundModeInput">Background</label>
+                        <select id="generatedImageBackgroundModeInput">
+                            <option value="solid">Solid color</option>
+                            <option value="gradient">Linear gradient</option>
+                            <option value="radial">Circular gradient</option>
+                        </select>
+
+                        <label id="generatedImagePresetLabel" for="generatedImagePresetInput">Gradient preset</label>
+                        <select id="generatedImagePresetInput">
+                            <option value="blurpleGlow">&#9790; Graphite halo</option>
+                            <option value="sunsetPeach">&#9790; Ember dusk</option>
+                            <option value="mintSky">&#9790; Evergreen mist</option>
+                            <option value="berryCream">&#9790; Plum shadow</option>
+                            <option value="morningMist">&#9728; Morning mist</option>
+                            <option value="peachBloom">&#9728; Peach bloom</option>
+                            <option value="mintCream">&#9728; Mint cream</option>
+                            <option value="lavenderSky">&#9728; Lavender sky</option>
+                        </select>
+
+                        <div id="generatedImageSolidPaletteField" class="stylingPaletteField" hidden>
+                            <span>Solid color</span>
+                            <div class="stylingHoneycombPalette" aria-label="Solid background color">
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBackgroundColorInput" data-color="#171a1f" style="--swatch-color: #171a1f;" aria-label="Graphite" title="Graphite"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBackgroundColorInput" data-color="#111827" style="--swatch-color: #111827;" aria-label="Midnight" title="Midnight"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBackgroundColorInput" data-color="#132a26" style="--swatch-color: #132a26;" aria-label="Forest" title="Forest"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBackgroundColorInput" data-color="#271a30" style="--swatch-color: #271a30;" aria-label="Plum" title="Plum"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBackgroundColorInput" data-color="#16243a" style="--swatch-color: #16243a;" aria-label="Navy" title="Navy"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBackgroundColorInput" data-color="#f8fafc" style="--swatch-color: #f8fafc;" aria-label="Snow" title="Snow"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBackgroundColorInput" data-color="#fff8b8" style="--swatch-color: #fff8b8;" aria-label="Classic Yellow" title="Classic Yellow"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBackgroundColorInput" data-color="#dbeafe" style="--swatch-color: #dbeafe;" aria-label="Ice Blue" title="Ice Blue"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBackgroundColorInput" data-color="#dcfce7" style="--swatch-color: #dcfce7;" aria-label="Mint" title="Mint"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBackgroundColorInput" data-color="#fae8ff" style="--swatch-color: #fae8ff;" aria-label="Lilac" title="Lilac"></button>
+                            </div>
+                        </div>
+                        <input type="hidden" id="generatedImageBackgroundColorInput" value="#3f4652">
+                        <input type="hidden" id="generatedImageGradientColorInput" value="#111318">
+                        <input type="hidden" id="generatedImageGradientAngleInput" value="135">
+                    </div>
+                </details>
+
+                <details class="stylingSection" open>
+                    <summary>Text & Credits</summary>
+                    <div class="stylingSectionGrid">
+                        <div class="stylingPaletteField">
+                            <span>Text color</span>
+                            <div class="stylingHoneycombPalette" aria-label="Generated image text color">
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageTextColorInput" data-color="#ffffff" style="--swatch-color: #ffffff;" aria-label="White" title="White"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageTextColorInput" data-color="#000000" style="--swatch-color: #000000;" aria-label="Black" title="Black"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageTextColorInput" data-color="#ff3b30" style="--swatch-color: #ff3b30;" aria-label="Red" title="Red"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageTextColorInput" data-color="#007aff" style="--swatch-color: #007aff;" aria-label="Blue" title="Blue"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageTextColorInput" data-color="#34c759" style="--swatch-color: #34c759;" aria-label="Green" title="Green"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageTextColorInput" data-color="#ffcc00" style="--swatch-color: #ffcc00;" aria-label="Yellow" title="Yellow"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageTextColorInput" data-color="#ff9500" style="--swatch-color: #ff9500;" aria-label="Orange" title="Orange"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageTextColorInput" data-color="#af52de" style="--swatch-color: #af52de;" aria-label="Purple" title="Purple"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageTextColorInput" data-color="#ff2d55" style="--swatch-color: #ff2d55;" aria-label="Pink" title="Pink"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageTextColorInput" data-color="#64d2ff" style="--swatch-color: #64d2ff;" aria-label="Cyan" title="Cyan"></button>
+                            </div>
+                        </div>
+                        <input type="hidden" id="generatedImageTextColorInput" value="#ffffff">
+                        <input type="hidden" id="generatedImageFontInput" value="Georgia">
+
+                        <label for="generatedImageBottomTextInput">Bottom text</label>
+                        <textarea id="generatedImageBottomTextInput" rows="3"></textarea>
+
+                        <label for="generatedImageShowBottomTextInput">Show bottom text</label>
+                        <input type="checkbox" id="generatedImageShowBottomTextInput" checked>
+
+                        <label for="generatedImageCreditInput">Username</label>
+                        <input type="text" id="generatedImageCreditInput" value="Gamingwith3K">
+                    </div>
+                </details>
+
+                <details class="stylingSection normalOnlyStyling" open>
+                    <summary>Price, Quantity & Multiplier</summary>
+                    <div class="stylingSectionGrid">
+                        <label for="priceCalculationItemInput">Price item</label>
+                        <div class="stylingInputAnchor">
+                            <input type="text" id="priceCalculationItemInput" autocomplete="off">
+                            <div id="priceCalculationItemFuzzyMatchesHolder" class="fuzzyMatchesHolder"></div>
+                        </div>
+
+                        <label for="defaultQuantityInput">Default quantity</label>
+                        <input type="text" id="defaultQuantityInput">
+
+                        <label for="defaultPriceOrMultiplierInput">Default price / multiplier</label>
+                        <input type="text" id="defaultPriceOrMultiplierInput">
+                    </div>
+                </details>
+
+                <details class="stylingSection normalOnlyStyling" open>
+                    <summary>Buy / Sell Item Style</summary>
+                    <div class="stylingSectionGrid">
+                        <div class="stylingInlineOptions">
+                            <input type="checkbox" id="generatedImageShowItemQuantityInput" checked>
+                            <label for="generatedImageShowItemQuantityInput">Show quantity</label>
+                            <input type="checkbox" id="generatedImageShowItemPriceInput" checked>
+                            <label for="generatedImageShowItemPriceInput">Show price/multiplier</label>
+                        </div>
+
+                        <label for="generatedImageEnableInfinityInput">Enable infinity quantity</label>
+                        <input type="checkbox" id="generatedImageEnableInfinityInput">
+
+                        <label for="generatedImageItemQuantitySizeInput">Quantity size</label>
+                        <div class="stylingRangeField">
+                            <input type="range" min="16" max="56" step="2" id="generatedImageItemQuantitySizeInput" value="34">
+                            <output id="generatedImageItemQuantitySizeOutput">34px</output>
+                        </div>
+
+                        <label for="generatedImageItemPriceSizeInput">Price / multiplier size</label>
+                        <div class="stylingRangeField">
+                            <input type="range" min="14" max="42" step="2" id="generatedImageItemPriceSizeInput" value="22">
+                            <output id="generatedImageItemPriceSizeOutput">22px</output>
+                        </div>
+                    </div>
+                </details>
+
+                <details class="stylingSection tradeOnlyStyling" open>
+                    <summary>Trade Row Style</summary>
+                    <div class="stylingSectionGrid">
+                        <div class="stylingPaletteField">
+                            <span>Trade row border color</span>
+                            <div class="stylingHoneycombPalette" aria-label="Trade row border color">
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBorderColorInput" data-color="#ffffff" style="--swatch-color: #ffffff;" aria-label="White" title="White"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBorderColorInput" data-color="#000000" style="--swatch-color: #000000;" aria-label="Black" title="Black"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBorderColorInput" data-color="#5865f2" style="--swatch-color: #5865f2;" aria-label="Blurple" title="Blurple"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBorderColorInput" data-color="#00aa77" style="--swatch-color: #00aa77;" aria-label="Emerald" title="Emerald"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBorderColorInput" data-color="#ff7eb3" style="--swatch-color: #ff7eb3;" aria-label="Pink" title="Pink"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBorderColorInput" data-color="#ff9f43" style="--swatch-color: #ff9f43;" aria-label="Orange" title="Orange"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBorderColorInput" data-color="#ffd43b" style="--swatch-color: #ffd43b;" aria-label="Gold" title="Gold"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBorderColorInput" data-color="#45aaf2" style="--swatch-color: #45aaf2;" aria-label="Blue" title="Blue"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBorderColorInput" data-color="#a55eea" style="--swatch-color: #a55eea;" aria-label="Purple" title="Purple"></button>
+                                <button type="button" class="stylingColorSwatch stylingHoneycombSwatch" data-target="generatedImageBorderColorInput" data-color="#ff5e57" style="--swatch-color: #ff5e57;" aria-label="Red" title="Red"></button>
+                            </div>
+                        </div>
+                        <input type="hidden" id="generatedImageBorderColorInput" value="#ffffff">
+
+                        <label for="generatedImageBorderThicknessInput">Trade row border thickness</label>
+                        <div class="stylingRangeField">
+                            <input type="range" min="0" max="8" id="generatedImageBorderThicknessInput" value="3">
+                            <output id="generatedImageBorderThicknessOutput">3px</output>
+                        </div>
+                    </div>
+                </details>
+
+                <details class="stylingSection" open>
+                    <summary>Canvas Padding</summary>
+                    <div class="stylingSectionGrid">
+                        <label for="generatedImagePaddingTopInput">Top</label>
+                        <div class="stylingRangeField">
+                            <input type="range" min="0" max="10" step="1" id="generatedImagePaddingTopInput" value="10">
+                            <output id="generatedImagePaddingTopOutput">10px</output>
+                        </div>
+
+                        <label for="generatedImagePaddingRightInput">Right</label>
+                        <div class="stylingRangeField">
+                            <input type="range" min="0" max="10" step="1" id="generatedImagePaddingRightInput" value="10">
+                            <output id="generatedImagePaddingRightOutput">10px</output>
+                        </div>
+
+                        <label for="generatedImagePaddingBottomInput">Bottom</label>
+                        <div class="stylingRangeField">
+                            <input type="range" min="0" max="10" step="1" id="generatedImagePaddingBottomInput" value="10">
+                            <output id="generatedImagePaddingBottomOutput">10px</output>
+                        </div>
+
+                        <label for="generatedImagePaddingLeftInput">Left</label>
+                        <div class="stylingRangeField">
+                            <input type="range" min="0" max="10" step="1" id="generatedImagePaddingLeftInput" value="10">
+                            <output id="generatedImagePaddingLeftOutput">10px</output>
+                        </div>
+
+                        <button type="button" id="generatedImagePaddingResetButton" class="stylingSectionResetButton">Reset</button>
+                    </div>
+                </details>
+
+                <details class="stylingSection" open>
+                    <summary>Item Lists</summary>
+                    <div class="stylingDrawerAdvancedContent">
+                        <div class="stylingItemListControls">
+                            <select id="itemListDropdown"></select>
+                            <button id="deleteItemListButton">Delete</button>
+                            <input type="text" id="createItemListInput">
+                            <button id="createItemListButton">Create</button>
+                        </div>
+                        <div class="stylingStackedChecks">
+                            <label><input type="checkbox" id="includeSettingsInItemListCheckBox">Include Settings</label>
+                            <label><input type="checkbox" id="copyCurrentItemsFromItemListCheckBox">Copy Current Items</label>
+                        </div>
+                    </div>
+                </details>
+
+                <details class="stylingSection">
+                    <summary>Advanced</summary>
+                    <div id="advancedSettingsDrawerContent" class="stylingDrawerAdvancedContent"></div>
+                </details>
+            </div>
+        </aside>
         </div>
 
-        <div id="settingsOverlay" class="overlay" hidden>
-            <div class="overlayBackground"></div>
-            <div class="overlayBox">
-                <button class="overlayHideButton">X</button>
-                <div class="overlayInner">
+        <template id="advancedSettingsDrawerTemplate">
                     <h2>Backup</h2>
                     <button id="ExportButton">Export All</button>
                     <button id="ImportButton">Import All</button>
@@ -123,28 +403,6 @@
 
                     <hr>
 
-                    <h2>Item Lists</h2>
-                    <div style="text-align: right; display: inline-block;">
-                        <!-- Annoyingly, the size calculations for select differ from that of input, so they are slightly different in width.  At first, I tried to make them be closer together, but I quickly realized that it would involve modifying the css of quite a few things, and it would likely be inconsistent across devices. -->
-                        <select id="itemListDropdown" style="width: 12em; margin-right: 1px;"></select>
-                        <button id="deleteItemListButton">Delete</button>
-                        <br>
-                        <hr style="border: 1px dashed grey;">
-                        <input type="text" id="createItemListInput" style="width: 12em;">
-                        <button id="createItemListButton">Create</button>
-                    </div>
-                    <br>
-                    <div style="text-align: left; display: inline-block;">
-                        <input type="checkbox" id="includeSettingsInItemListCheckBox">
-                        <label for="includeSettingsInItemListCheckBox">Include Settings</label>
-                        <br>
-                        <input type="checkbox" id="copyCurrentItemsFromItemListCheckBox">
-                        <label for="copyCurrentItemsFromItemListCheckBox">Copy Current Items</label>
-                    </div>
-
-                    <hr>
-
-                    <!-- <div style="height: 10px;"></div> -->
                     <h2>
                         Item Abbreviations
                         <br>
@@ -158,11 +416,6 @@
                             </tr>
                         </table>
                     </div>
-
-                    <hr>
-
-                    <h2>Bottom Text</h2>
-                    <textarea id="bottomTextSettingInput" rows="3" style="width: 90%;"></textarea>
 
                     <hr>
 
@@ -185,65 +438,6 @@
                     </h2>
                     <textarea id="textListFormatInput" rows="3" style="width: 90%;"></textarea>
 
-                    <hr>
-
-                    <h2>Item for Price Calculation</h2>
-                    <!-- this div needs to have position be relative in order for 100% width of the inner div to not cover the whole document ( https://stackoverflow.com/questions/6625116/css-position-absolute-and-full-width-problem ) -->
-                    <div style="display: inline-block; position: relative;">
-                        <!-- using em to be relative to the font size, since the font size is increased on iOS (to 16px) -->
-                        <input type="text" id="priceCalculationItemInput" style="width: 12em;" autocomplete="off">
-                        <div id="priceCalculationItemFuzzyMatchesHolder" class="fuzzyMatchesHolder"></div>
-                    </div>
-
-                    <!-- TODO -- finish implementing
-                    <hr>
-
-                    <h2>Selections</h2>
-
-                    <div style="display: inline-block; text-align: left;">
-                        <input type="checkbox" id="defaultItemsToSelectedCheckbox">
-                        <label for="defaultItemsToSelectedCheckbox">Default new items to selected</label>
-                        <br>
-                        <input type="checkbox" id="alwaysShowSelectedPriceCheckbox">
-                        <label for="alwaysShowSelectedPriceCheckbox">Always show selected price</label>
-                        <br>
-                        <input type="checkbox" id="persistSelectionCheckbox">
-                        <label for="persistSelectionCheckbox">Save selection and custom values</label>
-                    </div>
-                    -->
-
-                    <hr>
-
-                    <h2>Generated Image</h2>
-                    <div style="text-align: left; display: inline-block;">
-                        <input type="checkbox" id="showPriceInScreenshotCheckBox">
-                        <label for="showPriceInScreenshotCheckBox">Show Selected Price</label>
-                        <br>
-                        <input type="checkbox" id="showTotalInNormalModeCheckBox">
-                        <!-- no clue how to improve the verbiage of this without making it too long (I want to make it clear that this will show the total price of everything instead of selected when outside of price calculation mode) -->
-                        <!-- TODO -- this should be disabled when the checkbox above isn't checked -->
-                        <!--<label for="tempCheckBox">Show Total Price<br>in Normal Mode</label>-->
-                        <label for="showTotalInNormalModeCheckBox">Show Total in Normal Mode</label>
-                        <!-- <label for="tempCheckBox">Show Total instead in Normal Mode</label> -->
-                        <br>
-                        <br>
-                        <input type="checkbox" id="hidePriceOrMultiplierCheckBox">
-                        <label for="hidePriceOrMultiplierCheckBox">Hide Price/Multiplier</label>
-                    </div>
-
-                    <hr>
-
-                    <h2>Defaults</h2>
-                    <div style="text-align: right; display: inline-block;">
-                        <label for="defaultQuantityInput">Quantity</label>
-                        <input type="text" id="defaultQuantityInput" style="width: 8em;">
-                        <br>
-                        <label for="defaultPriceOrMultiplierInput">Price/Multiplier</label>
-                        <input type="text" id="defaultPriceOrMultiplierInput" style="width: 8em;">
-                    </div>
-
-                    <hr>
-
                     <h2>Misc.</h2>
                     <div style="text-align: left; display: inline-block;">
                         <input type="checkbox" id="refocusNameOnSubmitCheckBox">
@@ -254,22 +448,9 @@
                         <br>
                         <input type="checkbox" id="ignoreLocaleCheckBox">
                         <label for="ignoreLocaleCheckBox">Ignore Locale</label>
-                        <!-- TODO -- figure out how to disable animations and transitions via js; I don't see a good way currently -->
-                        <!-- <br> -->
-                        <!-- <input type="checkbox" id="reduceAnimationsCheckBox"> -->
-                        <!-- <label for="reduceAnimationsCheckBox">Reduce Animations</label> -->
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <div id="changelogOverlay" class="overlay" hidden>
-            <div class="overlayBackground"></div>
-            <div class="overlayBox">
-                <button class="overlayHideButton">X</button>
-                <div class="overlayInner"></div>
-            </div>
-        </div>
+                    </div>
+        </template>
 
         <div id="failedCopyOverlay" class="overlay" hidden>
             <div class="overlayBackground"></div>
@@ -278,29 +459,14 @@
                 <div class="overlayInner">
                     <h2>Copy Failed</h2>
 
-                    <!-- TODO -- need to make this look better... it's disgusting rn -->
+                    <p>We could not copy the image to your clipboard. This is usually caused by one of the following:</p>
+                    <ol class="failedCopyReasonList">
+                        <li>Leaving the site while the image is being copied.</li>
+                        <li>Using a mobile device that does not support image copying.</li>
+                    </ol>
                     <p>
-                        It looks like there was an issue with copying the image to the clipboard.
-                        <br>
-                        This is usually caused by one of the reasons below.
-                        <ol style="text-align: left; display: inline-block; margin: 0px;">
-                            <li>clicking out of the site while the image is being copied</li>
-                            <br>
-                            <li>using certain mobile devices</li>
-                            <br>
-                            <li>
-                                using firefox and not enabling (in <b>about:config</b>)
-                                <br>
-                                <b>dom.events.asyncClipboard.clipboardItem</b>
-                            </li>
-                        </ol>
+                        Your generated image is shown below. Right-click or long-press the image to copy or save it.
                     </p>
-                    <p>
-                        Below is the image that was generated (right click/long-press the image to copy/save it)
-                    </p>
-
-                    <hr>
-
                     <img id="failedCopyOverlayImageHolder">
                 </div>
             </div>
@@ -312,7 +478,7 @@
                 <button class="overlayHideButton">X</button>
                 <div class="overlayInner">
                     <h2>Discord</h2>
-                    <!-- reason for rel portion: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#security_and_privacy  and  https://stackoverflow.com/questions/15551779/open-link-in-new-tab-or-window -->
+
                     <a href="https://discord.gg/8SEjuFYWnB" target="_blank" rel="noopener noreferrer">Server Invite</a>
 
                     <hr>
@@ -322,6 +488,45 @@
                 </div>
             </div>
         </div>
+
+        <div id="suggestionOverlay" class="overlay" hidden>
+            <div class="overlayBackground"></div>
+            <div class="overlayBox">
+                <button class="overlayHideButton" aria-label="Close suggestion form"><i data-lucide="x"></i></button>
+                <div class="overlayInner">
+                    <h2>Send a Suggestion</h2>
+                    <p class="suggestionIntro">Share an idea or report an issue. You can attach a screenshot if it helps.</p>
+                    <form id="suggestionForm">
+                        <label for="suggestionDiscordInput">Discord username*</label>
+                        <input type="text" id="suggestionDiscordInput" name="discordUsername" autocomplete="off" required>
+                        <label class="suggestionIncognitoField" for="suggestionIncognitoInput">
+                            <input type="checkbox" id="suggestionIncognitoInput">
+                            Submit anonymously
+                        </label>
+
+                        <label for="suggestionCategoryInput">Category*</label>
+                        <select id="suggestionCategoryInput" name="category" required>
+                            <option value="" selected disabled>Select a category</option>
+                            <option>Suggestion</option>
+                            <option>Bug report</option>
+                            <option>Design feedback</option>
+                            <option>Other</option>
+                        </select>
+
+                        <label for="suggestionMessageInput">Suggestion*</label>
+                        <textarea id="suggestionMessageInput" name="message" rows="6" required></textarea>
+
+                        <label for="suggestionScreenshotInput">Screenshot</label>
+                        <input type="file" id="suggestionScreenshotInput" name="screenshot" accept="image/png,image/jpeg,image/webp">
+
+                        <div class="suggestionFormActions">
+                            <button type="submit" id="suggestionSubmitButton"><i data-lucide="send"></i>Send Suggestion</button>
+                            <div id="suggestionLoadingWheel" class="loading" hidden></div>
+                            <span id="suggestionStatus" role="status" aria-live="polite"></span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </body>
 </html>
-

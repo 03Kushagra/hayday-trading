@@ -1,24 +1,742 @@
-// There are more operators than the ones here technically supported by math.js, but I feel like these are all the "reasonable" ones to support for the automatic prepending of the old quantity/custom quantity ( https://mathjs.org/docs/expressions/syntax.html )
-// TODO -- I could theoretically make this a set, but that's probably not a good idea since the "keys" have differing lengths and I'm just looking for whether a given equation string starts with one of these keys
-const operators = ['+', '-', '*', '/', '^', '%', "mod", '&', '|', "<<", ">>>", ">>"]; // >>> should be before >> to ensure the full operator gets removed then readded later (if >> was first, ">>> 5" would only remove the first 2 '>' leaving "> 5")
-function handleAddingItem(e, usedSubmitButton = false)
+const operators = ['+', '-', '*', '/', '^', '%', "mod", '&', '|', "<<", ">>>", ">>"];
+function getIsInTradeView()
 {
-    // only want the name box to have the invalid red border until the user starts typing again (tabbing into this textbox also cancels it; unfortunately, this gets removed almost immediately if the user starts typing right after pressing enter, since it takes a bit of time for the fetch to occur and for the invalid class to be added, if needed)
-    if(itemNameInput.hasClass("invalid"))
-        itemNameInput.removeClass("invalid");
+    return tradeViewButton.hasClass("selected");
+}
 
+function setTradeViewEnabled(shouldEnable)
+{
+    if(shouldEnable === getIsInTradeView())
+        return;
 
-    // Don't want to accept changes while trying to copy the image
-    // TODO -- I don't handle actively copying image yet for anything related to price calculation mode; maybe I should do that?
+    if(shouldEnable && getIsInPriceCalculationMode())
+        $("#priceCalculationToggleButton").trigger("click");
+    if(!shouldEnable && getIsInTradeSelectionMode())
+        $("#tradeSelectionToggleButton").trigger("click");
+
+    storeItemList();
+    normalViewButton.toggleClass("selected", !shouldEnable);
+    tradeViewButton.toggleClass("selected", shouldEnable);
+    $("body").toggleClass("tradeView", shouldEnable);
+    activateItemListsForCurrentMode();
+    loadItemList();
+
+    itemEditorModeTitle.text(shouldEnable ? "Trade View" : "Add/Modify Item");
+    itemsPerRowOptionLabel.text(shouldEnable ? "Trades Per Row" : "Items Per Row");
+    itemsPerRowSlider.prop("max", shouldEnable ? 4 : 12);
+    itemsPerRowSlider.val(shouldEnable ? tradeRowsPerRow : itemsPerRow);
+    itemsPerRowLabel.text(shouldEnable ? tradeRowsPerRow : itemsPerRow);
+    normalItemEntryHint.prop("hidden", shouldEnable);
+    normalItemEntryArea.prop("hidden", shouldEnable);
+    tradeItemEntryArea.prop("hidden", !shouldEnable);
+    normalItemClickInfo.prop("hidden", shouldEnable);
+    priceCalculationModeSelectionInfo.prop("hidden", shouldEnable || !getIsInPriceCalculationMode());
+    updatePriceCalculationDetailsVisibility();
+
+    hideInTradeViewElems.prop("hidden", shouldEnable);
+    itemTable.prop("hidden", shouldEnable);
+    normalItemsPlaceholder.prop("hidden", shouldEnable || !!items.size);
+    tradeDisplay.prop("hidden", !shouldEnable);
+
+    if(shouldEnable)
+    {
+        screenshotPriceHolder.empty();
+        updateTradeDisplay();
+        updateTradeDraftSummary();
+        updateTradeSubmitButtonText();
+    }
+    else
+    {
+        tradeDisplay.empty();
+        updateItemLayout();
+    }
+
+    rescaleScreenshotRegion();
+}
+
+function updateScreenshotEmptyState()
+{
+    const isEmpty = getIsInTradeView() ? !getVisibleTradeRows().length : !items.size;
+    screenshotRegion.toggleClass("emptyPreview", isEmpty);
+}
+
+function handleFuzzyMatchKeyboardSelection(e, fuzzyMatchesHolder)
+{
+    if(e.key.length !== 1 || e.key < '0' || e.key > '9')
+        return;
+    let selection = e.key - '0';
+    if(selection === 0)
+        selection = 10;
+
+    const buttons = fuzzyMatchesHolder.find("button");
+    if(buttons.length < selection)
+        return;
+
+    buttons.eq(selection - 1).trigger("mousedown", {usedKeyboard: true});
+    e.preventDefault();
+}
+
+function getTradeSideForInput(itemInput)
+{
+    if(itemInput === tradeOfferNameInput)
+        return "offer";
+    if(itemInput === tradeWantNameInput)
+        return "want";
+    return undefined;
+}
+
+function getTradeInputCache(side)
+{
+    return side === "offer" ? tradeOfferInputItemCache : tradeWantInputItemCache;
+}
+
+function getTradeNameInput(side)
+{
+    return side === "offer" ? tradeOfferNameInput : tradeWantNameInput;
+}
+
+function getDisplacedTradeInputItem(side)
+{
+    const cachedItem = getTradeInputCache(side);
+    if(!cachedItem)
+        return undefined;
+
+    return formatItemName(getTradeNameInput(side).val()) === cachedItem.name ? undefined : cachedItem;
+}
+
+function addDisplacedTradeInputItem(itemList, side)
+{
+    const displacedItem = getDisplacedTradeInputItem(side);
+    if(displacedItem)
+        addOrMergeTradeItem(itemList, Object.assign(new Item(), displacedItem));
+}
+
+function getTradeDraftItemsForSubmit(side)
+{
+    const sourceItems = side === "offer" ? tradeDraftOfferItems : tradeDraftWantItems;
+    const itemsForSubmit = sourceItems.map(item => Object.assign(new Item(), item));
+    addDisplacedTradeInputItem(itemsForSubmit, side);
+    sortTradeItemsByOrder(itemsForSubmit);
+    return itemsForSubmit;
+}
+
+function handleSubmittingTrade(e, usedSubmitButton = false)
+{
+    clearTradeInvalidState();
+
     if(isActivelyCopyingImage)
         return;
 
-    // TODO -- might want to be using e.key instead
     if(!usedSubmitButton && e.code !== "Enter")
         return;
 
-    // at this point, the user has attempted to submit (or delete), so the input should get reselected (if the setting is enabled; this mostly just matters for people who click the submit button instead of enter)
-    // note that this also occurs when Delete button gets clicked
+    Promise.all(tradeDraftPendingPromises)
+        .then(() => submitTradeRow())
+        .catch(e =>
+        {
+            console.log("Failed to resolve pending trade draft items --", e);
+        });
+}
+
+function submitTradeRow()
+{
+    const offerItems = getTradeDraftItemsForSubmit("offer");
+    const wantItems = getTradeDraftItemsForSubmit("want");
+    const hasOfferInput = formatItemName(tradeOfferNameInput.val()).length > 0;
+    const hasWantInput = formatItemName(tradeWantNameInput.val()).length > 0;
+
+    Promise.all([
+        hasOfferInput ? getTradeInputItem(tradeOfferNameInput, tradeOfferQuantityInput) : undefined,
+        hasWantInput ? getTradeInputItem(tradeWantNameInput, tradeWantQuantityInput) : undefined
+    ])
+        .then(([offerInputItem, wantInputItem]) =>
+        {
+            if(offerInputItem)
+                addOrMergeTradeItem(offerItems, offerInputItem);
+            if(wantInputItem)
+                addOrMergeTradeItem(wantItems, wantInputItem);
+            sortTradeItemsByOrder(offerItems);
+            sortTradeItemsByOrder(wantItems);
+
+            if(!offerItems.length)
+                tradeOfferNameInput.addClass("invalid");
+            if(!wantItems.length)
+                tradeWantNameInput.addClass("invalid");
+            if(!offerItems.length || !wantItems.length)
+                return;
+
+            if(editingTradeRowIndex === undefined)
+                tradeRows.push({
+                    offerItems,
+                    wantItems,
+                    isSelected: getIsInTradeSelectionMode() && shouldHideUnselectedTrades
+                });
+            else
+                tradeRows[editingTradeRowIndex] = {offerItems, wantItems, isSelected: tradeRows[editingTradeRowIndex].isSelected};
+            saveTradeRowsToLocalStorage();
+            clearTradeDraft();
+            updateTradeDisplay();
+            updateTradeDraftSummary();
+            updateTradeSubmitButtonText();
+            tradeOfferNameInput.trigger("focus").trigger("select");
+        })
+        .catch(e =>
+        {
+            console.log("Failed to create trade row --", e);
+        });
+}
+
+function addTradeDraftItem(side)
+{
+    const isOfferSide = side === "offer";
+    const itemList = isOfferSide ? tradeDraftOfferItems : tradeDraftWantItems;
+    const nameInput = isOfferSide ? tradeOfferNameInput : tradeWantNameInput;
+    const quantityInput = isOfferSide ? tradeOfferQuantityInput : tradeWantQuantityInput;
+    const itemOrder = tradeDraftOrder++;
+
+    clearTradeInvalidState();
+
+    const pendingPromise = getTradeInputItem(nameInput, quantityInput, true)
+        .then(item =>
+        {
+            if(!item)
+                return;
+
+            addDisplacedTradeInputItem(itemList, side);
+            addOrMergeTradeItem(itemList, item);
+            item.tradeOrder = itemOrder;
+            sortTradeItemsByOrder(itemList);
+            clearTradeNameInput(side, item.name);
+            focusTradeQuantityInput(side);
+            updateTradeDraftSummary();
+            rescaleScreenshotRegion();
+        })
+        .catch(e =>
+        {
+            console.log("Failed to add trade draft item --", e);
+        })
+        .finally(() =>
+        {
+            tradeDraftPendingPromises = tradeDraftPendingPromises.filter(promise => promise !== pendingPromise);
+        });
+    tradeDraftPendingPromises.push(pendingPromise);
+}
+
+async function getTradeInputItem(nameInput, quantityInput, shouldRequireName = false)
+{
+    const itemNameFormatted = formatItemName(nameInput.val());
+    if(!itemNameFormatted.length)
+    {
+        if(shouldRequireName)
+            nameInput.addClass("invalid");
+        return undefined;
+    }
+
+    let itemQuantity;
+    try
+    {
+        itemQuantity = Math.floor(math.evaluate(quantityInput.val().trim()));
+    }
+    catch(e)
+    {
+        quantityInput.addClass("invalid");
+        console.log("Unable to evaluate trade quantity --", e);
+        throw e;
+    }
+
+    if(!Number.isFinite(itemQuantity) || itemQuantity <= 0)
+    {
+        quantityInput.addClass("invalid");
+        throw new Error("Invalid trade quantity");
+    }
+
+    try
+    {
+        const cachedItem = nameInput === tradeOfferNameInput ? tradeOfferInputItemCache : tradeWantInputItemCache;
+        if(cachedItem && cachedItem.name === itemNameFormatted)
+        {
+            const item = new Item(itemNameFormatted, itemQuantity, cachedItem.url, "", NaN);
+            item.tradeOrder = cachedItem.tradeOrder;
+            return item;
+        }
+
+        const imageUrl = await getImageUrl(itemNameFormatted);
+        return new Item(itemNameFormatted, itemQuantity, imageUrl, "", NaN);
+    }
+    catch(e)
+    {
+        nameInput.addClass("invalid");
+        throw e;
+    }
+}
+
+function addOrMergeTradeItem(itemList, item)
+{
+    const existingItem = itemList.find(currItem => currItem.name === item.name);
+    if(existingItem)
+        existingItem.quantity += item.quantity;
+    else
+        itemList.push(item);
+}
+
+function sortTradeItemsByOrder(itemList)
+{
+    itemList.sort((item1, item2) => (item1.tradeOrder ?? Infinity) - (item2.tradeOrder ?? Infinity));
+}
+
+function clearTradeDraft()
+{
+    tradeDraftOfferItems = [];
+    tradeDraftWantItems = [];
+    tradeDraftPendingPromises = [];
+    tradeDraftOrder = 0;
+    editingTradeRowIndex = undefined;
+    clearTradeInputs();
+    clearTradeInvalidState();
+    updateTradeDraftControls();
+}
+
+function clearTradeInputs(side = "all")
+{
+    if(side === "all" || side === "offer")
+    {
+        tradeOfferNameInput.val("");
+        tradeOfferQuantityInput.val("");
+        tradeOfferInputItemCache = undefined;
+    }
+
+    if(side === "all" || side === "want")
+    {
+        tradeWantNameInput.val("");
+        tradeWantQuantityInput.val("");
+        tradeWantInputItemCache = undefined;
+    }
+}
+
+function clearTradeNameInput(side, itemNameToClear)
+{
+    if(side === "offer")
+    {
+        if(formatItemName(tradeOfferNameInput.val()) === itemNameToClear)
+        {
+            tradeOfferNameInput.val("");
+            tradeOfferInputItemCache = undefined;
+        }
+    }
+    else
+    {
+        if(formatItemName(tradeWantNameInput.val()) === itemNameToClear)
+        {
+            tradeWantNameInput.val("");
+            tradeWantInputItemCache = undefined;
+        }
+    }
+}
+
+function clearTradeInvalidState()
+{
+    tradeOfferNameInput.removeClass("invalid");
+    tradeWantNameInput.removeClass("invalid");
+    tradeOfferQuantityInput.removeClass("invalid");
+    tradeWantQuantityInput.removeClass("invalid");
+}
+
+function updateTradeDraftSummary()
+{
+    const offerSummaryParts = getTradeSummaryParts("offer");
+    const wantSummaryParts = getTradeSummaryParts("want");
+    const hasDraft = offerSummaryParts.length || wantSummaryParts.length;
+    updateTradeDraftControls();
+    tradeDraftSummary.prop("hidden", !hasDraft);
+    if(!hasDraft)
+    {
+        tradeDraftSummary.text("");
+        return;
+    }
+
+    const offerSummary = offerSummaryParts.length ? offerSummaryParts.join(" + ") : "...";
+    const wantSummary = wantSummaryParts.length ? wantSummaryParts.join(" + ") : "...";
+    tradeDraftSummary.text(`${editingTradeRowIndex === undefined ? "Draft" : "Editing"}: ${offerSummary} for ${wantSummary}`);
+}
+
+function updateTradeDraftControls()
+{
+    const hasDraftItems = tradeDraftOfferItems.length || tradeDraftWantItems.length || editingTradeRowIndex !== undefined;
+    $("#tradeClearButton").prop("disabled", !hasDraftItems);
+}
+
+function getTradeSummaryParts(side)
+{
+    const itemList = side === "offer" ? tradeDraftOfferItems : tradeDraftWantItems;
+    const parts = itemList.map(item => formatTradeItemSummary(item));
+    const cachedItem = editingTradeRowIndex === undefined ? undefined : getTradeInputCache(side);
+    if(cachedItem && !itemList.some(item => item.name === cachedItem.name))
+        parts.unshift(formatTradeItemSummary(cachedItem));
+
+    return parts;
+}
+
+function updateTradeSubmitButtonText()
+{
+    $("#tradeSubmitButton").html(`<i data-lucide="save"></i>${editingTradeRowIndex === undefined ? "Save Trade Row" : "Update Trade Row"}`);
+    tradeCancelEditButton.prop("hidden", editingTradeRowIndex === undefined);
+    renderLucideIcons();
+}
+
+function updateTradeDisplay()
+{
+    tradeDisplay.empty();
+    tradeDisplay.css("grid-template-columns", `repeat(${tradeRowsPerRow}, max-content)`);
+    updateScreenshotEmptyState();
+
+    const visibleTradeRows = getVisibleTradeRows();
+    if(!visibleTradeRows.length)
+    {
+        const placeholder = document.createElement("p");
+        placeholder.innerText = tradeRows.length ? "Select trades to show in the preview" : "Add a trade to preview the ratio";
+        placeholder.classList.add("tradePlaceholder");
+        tradeDisplay.append(placeholder);
+        rescaleScreenshotRegion();
+        return;
+    }
+
+    for(let tradeRow of visibleTradeRows)
+        tradeDisplay.append(createTradeRow(tradeRow, tradeRows.indexOf(tradeRow)));
+
+    renderLucideIcons();
+    rescaleScreenshotRegion();
+}
+
+function getVisibleTradeRows()
+{
+    if(getIsInTradeSelectionMode() && shouldHideUnselectedTrades)
+        return tradeRows.filter(tradeRow => tradeRow.isSelected);
+
+    return tradeRows;
+}
+
+function getIsInTradeSelectionMode()
+{
+    return isTradeSelectionModeEnabled;
+}
+
+function toggleTradeRowSelection(index)
+{
+    const tradeRow = tradeRows[index];
+    if(!tradeRow)
+        return;
+
+    tradeRow.isSelected = !tradeRow.isSelected;
+    updateTradeDisplay();
+}
+
+function createTradeRow(tradeRow, index)
+{
+    const rowBlock = document.createElement("div");
+    rowBlock.classList.add("tradeRowBlock");
+    if(getIsInTradeSelectionMode() && tradeRow.isSelected)
+        rowBlock.classList.add("selected");
+    $(rowBlock).on("click", () =>
+    {
+        if(getIsInTradeSelectionMode())
+            toggleTradeRowSelection(index);
+        else
+            editTradeRow(index, true);
+    });
+
+    const deleteButton = document.createElement("button");
+    deleteButton.innerHTML = '<img src="images/trash-light.png?v=2" alt="">';
+    deleteButton.title = "Remove trade";
+    deleteButton.setAttribute("aria-label", "Remove trade");
+    deleteButton.classList.add("tradeDeleteButton");
+    $(deleteButton).on("click", (event) =>
+    {
+        event.stopPropagation();
+        removeTradeRow(index);
+    });
+    rowBlock.appendChild(deleteButton);
+
+    const row = document.createElement("div");
+    row.classList.add("tradeRow");
+
+    row.appendChild(createTradeSide(tradeRow.offerItems, index, "offer"));
+
+    const direction = document.createElement("p");
+    direction.innerText = "for";
+    direction.classList.add("tradeDirection");
+    row.appendChild(direction);
+
+    row.appendChild(createTradeSide(tradeRow.wantItems, index, "want"));
+
+    const ratioBadge = document.createElement("p");
+    ratioBadge.innerText = getTradeRatioText(tradeRow.offerItems, tradeRow.wantItems);
+    ratioBadge.classList.add("tradeRatioBadge");
+    row.appendChild(ratioBadge);
+
+    rowBlock.appendChild(row);
+
+    return rowBlock;
+}
+
+function editTradeRow(index, shouldPopulateInputs = false)
+{
+    const tradeRow = tradeRows[index];
+    if(!tradeRow)
+        return;
+
+    editingTradeRowIndex = index;
+    tradeDraftOfferItems = tradeRow.offerItems.map((item, i) =>
+    {
+        const copy = Object.assign(new Item(), item);
+        copy.tradeOrder = i;
+        return copy;
+    });
+    tradeDraftWantItems = tradeRow.wantItems.map((item, i) =>
+    {
+        const copy = Object.assign(new Item(), item);
+        copy.tradeOrder = i;
+        return copy;
+    });
+    tradeDraftPendingPromises = [];
+    tradeDraftOrder = Math.max(tradeDraftOfferItems.length, tradeDraftWantItems.length);
+    clearTradeInputs();
+    clearTradeInvalidState();
+    if(shouldPopulateInputs)
+    {
+        moveTradeDraftItemAtIndexToInput("offer", 0);
+        moveTradeDraftItemAtIndexToInput("want", 0);
+    }
+    updateTradeDraftSummary();
+    updateTradeSubmitButtonText();
+}
+
+function removeTradeRow(index)
+{
+    tradeRows.splice(index, 1);
+    if(editingTradeRowIndex === index)
+        clearTradeDraft();
+    else if(editingTradeRowIndex > index)
+        editingTradeRowIndex--;
+
+    saveTradeRowsToLocalStorage();
+    updateTradeDisplay();
+    updateTradeDraftSummary();
+    updateTradeSubmitButtonText();
+}
+
+function createTradeSide(items, rowIndex, side)
+{
+    const tradeSide = document.createElement("div");
+    tradeSide.classList.add("tradeSide");
+
+    for(let item of items)
+        tradeSide.appendChild(createTradeCard(item, () =>
+        {
+            if(getIsInTradeSelectionMode())
+            {
+                toggleTradeRowSelection(rowIndex);
+                return;
+            }
+
+            editTradeRow(rowIndex);
+            moveTradeDraftItemToInput(side, item.name);
+            populateOppositeTradeSideInput(side);
+            focusTradeQuantityInput(side);
+        }));
+
+    return tradeSide;
+}
+
+function createTradeCard(item, clickHandler)
+{
+    const card = document.createElement("div");
+    card.classList.add("tradeCard");
+    if(clickHandler)
+    {
+        $(card).on("click", (event) =>
+        {
+            event.stopPropagation();
+            clickHandler();
+        });
+    }
+
+    const image = document.createElement("img");
+    image.src = item.url;
+    image.alt = item.getHumanReadableName();
+
+    const quantityLabel = document.createElement("p");
+    quantityLabel.innerText = item.quantity;
+    quantityLabel.classList.add("label", "tradeQuantityLabel");
+
+    const itemName = document.createElement("p");
+    itemName.innerText = item.getHumanReadableName();
+    itemName.classList.add("tradeItemName");
+
+    card.appendChild(image);
+    card.appendChild(quantityLabel);
+    card.appendChild(itemName);
+
+    return card;
+}
+
+function moveTradeDraftItemToInput(side, itemName)
+{
+    const itemList = side === "offer" ? tradeDraftOfferItems : tradeDraftWantItems;
+    const itemIndex = itemList.findIndex(item => item.name === itemName);
+    if(itemIndex === -1)
+        return;
+
+    moveTradeDraftItemAtIndexToInput(side, itemIndex);
+}
+
+function moveTradeDraftItemAtIndexToInput(side, itemIndex)
+{
+    const itemList = side === "offer" ? tradeDraftOfferItems : tradeDraftWantItems;
+    if(itemIndex < 0 || itemIndex >= itemList.length)
+        return;
+
+    const item = itemList.splice(itemIndex, 1)[0];
+    if(side === "offer")
+    {
+        tradeOfferNameInput.val(item.getHumanReadableName());
+        tradeOfferQuantityInput.val(item.quantity);
+        tradeOfferInputItemCache = item;
+        tradeOfferNameInput.trigger("select");
+    }
+    else
+    {
+        tradeWantNameInput.val(item.getHumanReadableName());
+        tradeWantQuantityInput.val(item.quantity);
+        tradeWantInputItemCache = item;
+        tradeWantNameInput.trigger("select");
+    }
+
+    updateTradeDraftSummary();
+    focusTradeQuantityInput(side);
+}
+
+function populateOppositeTradeSideInput(side)
+{
+    if(side === "offer")
+        moveTradeDraftItemAtIndexToInput("want", 0);
+    else
+        moveTradeDraftItemAtIndexToInput("offer", 0);
+}
+
+function focusTradeQuantityInput(side)
+{
+    if(side === "offer")
+        tradeOfferQuantityInput.trigger("select");
+    else
+        tradeWantQuantityInput.trigger("select");
+}
+
+function formatTradeSideSummary(items)
+{
+    return items.map(formatTradeItemSummary).join(" + ");
+}
+
+function formatTradeItemSummary(item)
+{
+    return `${item.quantity}x ${item.getHumanReadableName()}`;
+}
+
+function getTradeInputSummary(side)
+{
+    const nameInput = side === "offer" ? tradeOfferNameInput : tradeWantNameInput;
+    const quantityInput = side === "offer" ? tradeOfferQuantityInput : tradeWantQuantityInput;
+    const cachedItem = side === "offer" ? tradeOfferInputItemCache : tradeWantInputItemCache;
+    const rawName = nameInput.val().trim();
+
+    if(!rawName.length)
+        return undefined;
+
+    const itemName = formatItemName(rawName);
+    const quantity = quantityInput.val().trim() || "1";
+    const displayName = cachedItem && cachedItem.name === itemName ? cachedItem.getHumanReadableName() : rawName;
+    return `${quantity}x ${displayName}`;
+}
+
+function getTradeSideRatioTotal(items)
+{
+    return items.reduce((total, item) => total + getTradeRatioQuantity(item), 0);
+}
+
+function getTradeRatioQuantity(item)
+{
+    return customItemNames.has(item.name) ? item.quantity * 89 : item.quantity;
+}
+
+function getTradeRatioText(offerItems, wantItems)
+{
+    const offerSetCount = getTradeSetCount(offerItems);
+    const wantSetCount = getTradeSetCount(wantItems);
+    const offerTotal = getTradeSideRatioTotal(offerItems);
+    const wantTotal = getTradeSideRatioTotal(wantItems);
+
+    if(wantSetCount > 0 && wantSetCount === getTradeSideQuantityTotal(wantItems))
+        return `${formatTradeRatioNumber(offerTotal / wantSetCount)}:89`;
+
+    if(offerSetCount > 0 && offerSetCount === getTradeSideQuantityTotal(offerItems))
+        return `89:${formatTradeRatioNumber(wantTotal / offerSetCount)}`;
+
+    return `${formatTradeRatioNumber(offerTotal)}:${formatTradeRatioNumber(wantTotal)}`;
+}
+
+function getTradeSetCount(items)
+{
+    return items.reduce((total, item) => total + (customItemNames.has(item.name) ? item.quantity : 0), 0);
+}
+
+function getTradeSideQuantityTotal(items)
+{
+    return items.reduce((total, item) => total + item.quantity, 0);
+}
+
+function formatTradeRatioNumber(num)
+{
+    return Number.isInteger(num) ? num : +num.toFixed(2);
+}
+
+const INFINITY_QUANTITY = "\u221e";
+
+function getIsInfiniteQuantity(quantity)
+{
+    return quantity === INFINITY_QUANTITY;
+}
+
+function getQuantitySortValue(quantity)
+{
+    return getIsInfiniteQuantity(quantity) ? Number.POSITIVE_INFINITY : quantity;
+}
+
+function getHasInfiniteQuantity(itemsToCheck, shouldIgnoreCustomValues = false, shouldOnlyCheckSelected = false)
+{
+    for(let item of itemsToCheck)
+    {
+        if(shouldOnlyCheckSelected && !item.isSelected)
+            continue;
+
+        const quantity = shouldIgnoreCustomValues ? item.quantity : (item.customQuantity ?? item.quantity);
+        if(getIsInfiniteQuantity(quantity))
+            return true;
+    }
+
+    return false;
+}
+
+function handleAddingItem(e, usedSubmitButton = false)
+{
+
+    if(itemNameInput.hasClass("invalid"))
+        itemNameInput.removeClass("invalid");
+
+    if(isActivelyCopyingImage)
+        return;
+
+    if(!usedSubmitButton && e.code !== "Enter")
+        return;
+
     if(shouldRefocusNameOnSubmit)
         itemNameInput.trigger("select");
 
@@ -28,7 +746,7 @@ function handleAddingItem(e, usedSubmitButton = false)
 
     let itemQuantity, prependedQuantityOperator = "";
     let itemQuantityEquation = itemQuantityInput.val().trim();
-    // only want to separate starting operator if the item already exists (if the item doesn't exist, the whole quantity should be evaluated as one equation)
+
     if(items.has(itemNameFormatted))
     {
         for(let operator of operators)
@@ -44,8 +762,19 @@ function handleAddingItem(e, usedSubmitButton = false)
 
     try
     {
-        // rest of equation is calculated beforehand so that addItem() gets an actual value
-        itemQuantity = itemQuantityEquation.length ? math.evaluate(itemQuantityEquation) : 0;
+
+        if(itemQuantityEquation === INFINITY_QUANTITY)
+        {
+            if(!generatedImageEnableInfinityInput.prop("checked") || prependedQuantityOperator)
+                return;
+
+            itemQuantity = INFINITY_QUANTITY;
+        }
+        else
+            itemQuantity = itemQuantityEquation.length ? math.evaluate(itemQuantityEquation) : 0;
+
+        if(!getIsInfiniteQuantity(itemQuantity) && !Number.isFinite(itemQuantity))
+            return;
     }
     catch(e)
     {
@@ -67,7 +796,6 @@ function handleAddingItem(e, usedSubmitButton = false)
     itemPriceOrMultiplierInput.val(defaultPriceOrMultiplier);
 }
 
-
 class Item
 {
     static fieldsToOmitFromLocalStorage = new Set(["customQuantity", "customPriceOrMultiplier", "isSelected"]);
@@ -79,7 +807,6 @@ class Item
         this.priceOrMultiplier = priceOrMultiplier;
         this.maxPrice = maxPrice;
 
-        // these should not persist across sessions (I also omit them from the JSON.stringify)
         this.customQuantity = undefined;
         this.customPriceOrMultiplier = undefined;
         this.isSelected = false;
@@ -90,7 +817,6 @@ class Item
         return this.name.replaceAll("_", " ");
     }
 
-    // returns [totalPrice, equation, error, warning]
     calculateTotalPrice(shouldIgnoreCustomValues = false)
     {
         let quantity = this.customQuantity ?? this.quantity,
@@ -103,9 +829,11 @@ class Item
             priceOrMultiplier = this.priceOrMultiplier;
         }
 
+        if(getIsInfiniteQuantity(quantity))
+            return [NaN, INFINITY_QUANTITY, `${this.getHumanReadableName()} has an infinite quantity, so its total cannot be calculated.`];
+
         if(!maxPrice && !customItemNames.has(this.name))
             return [NaN, "NaN", `${this.getHumanReadableName()} doesn't have a valid maximum price (${maxPrice}).`];
-
 
         priceOrMultiplier = priceOrMultiplier.trim();
 
@@ -118,7 +846,7 @@ class Item
         }
         else if(priceOrMultiplier.endsWith('x'))
         {
-            // this is to handle when a custom item name without a maximum price reaches here
+
             if(!maxPrice)
                 return [NaN, "NaN", `${this.getHumanReadableName()} is a custom item without a valid maximum price (${maxPrice}).`];
 
@@ -133,7 +861,7 @@ class Item
 
         if(mult)
             price = `${maxPrice}*(${mult})`;
-        // I'm doing this so that it can be shown to the user in full
+
         price = `${quantity}*(${price})`;
 
         try
@@ -143,52 +871,52 @@ class Item
         catch(e)
         {
             console.log(e);
-            // I believe that it would only ever be an issue with the price/mult?
-            // return [NaN, price, `${this.getHumanReadableName()} has some invalid value (quantity: ${quantity}, price/multiplier: ${priceOrMultiplier}, max price: ${maxPrice} -- equation: ${price}).`, warning];
+
             return [NaN, price, `${this.getHumanReadableName()} has an invalid price/multiplier (price/multiplier: ${priceOrMultiplier} -- equation: ${price}).`, warning];
         }
     }
 }
 
-
 function addItem(itemNameFormatted, itemQuantity, itemPriceOrMultiplier, prependedQuantityOperator = "")
 {
     const isInPriceCalculationMode = getIsInPriceCalculationMode();
 
-    // the itemQuantity is already completely calculated, but we need to ensure that it isn't floating-point
-    if(!prependedQuantityOperator)
+    if(!prependedQuantityOperator && !getIsInfiniteQuantity(itemQuantity))
         itemQuantity = Math.floor(itemQuantity);
 
     if(items.has(itemNameFormatted))
     {
         const currItem = items.get(itemNameFormatted);
 
-        // modifies the custom fields instead when in price calculation mode
         if(isInPriceCalculationMode)
         {
+            if(prependedQuantityOperator.length && (getIsInfiniteQuantity(currItem.customQuantity ?? currItem.quantity) || getIsInfiniteQuantity(itemQuantity)))
+                return Promise.resolve();
+
             if(prependedQuantityOperator.length)
                 itemQuantity = Math.floor(math.evaluate(`${currItem.customQuantity ?? currItem.quantity} ${prependedQuantityOperator} ${itemQuantity}`));
-            // only stores custom if it differs; custom quantity set to <=0 defaults back to normal quantity, and custom price/mult gets wiped if its field becomes empty (otherwise the user might try to wipe it out, only to find out that it makes the mult default to 1x)
-            currItem.customQuantity = (itemQuantity > 0 && itemQuantity !== currItem.quantity) ? itemQuantity : undefined;
+
+            currItem.customQuantity = ((getIsInfiniteQuantity(itemQuantity) || itemQuantity > 0) && itemQuantity !== currItem.quantity) ? itemQuantity : undefined;
             currItem.customPriceOrMultiplier = (itemPriceOrMultiplier.trim().length && itemPriceOrMultiplier !== currItem.priceOrMultiplier) ? itemPriceOrMultiplier : undefined;
 
-            // makes sure that the item just modified is selected so that the custom value is visible to the user (if the user modified the value, they likely wanted it to be selected); this is to help with the fact that clicking on a selected item's quantity/price will deselect it
             currItem.isSelected = true;
 
             return Promise.resolve();
         }
 
+        if(prependedQuantityOperator.length && getIsInfiniteQuantity(currItem.quantity))
+            return Promise.resolve();
+
         if(prependedQuantityOperator.length)
             itemQuantity = Math.floor(math.evaluate(`${currItem.quantity} ${prependedQuantityOperator} ${itemQuantity}`));
 
-        if(itemQuantity > 0)
+        if(getIsInfiniteQuantity(itemQuantity) || itemQuantity > 0)
         {
             const prevQuantity = currItem.quantity;
             currItem.quantity = itemQuantity;
             currItem.priceOrMultiplier = itemPriceOrMultiplier;
 
-            // need to wipe out custom values if they now match the new quantity/prices
-            if(currItem.customQuantity === currItem.quantity || (currItem.customQuantity > currItem.quantity && currItem.customQuantity < prevQuantity)) // after updating an item's actual quantity, custom quantities above it should reset/"snap" back to the new quantity (unless it was already above it; custom quantity won't ever equal previous quantity, since it would have just gotten reset to undefined)
+            if(currItem.customQuantity === currItem.quantity || (currItem.customQuantity > currItem.quantity && currItem.customQuantity < prevQuantity))
                 currItem.customQuantity = undefined;
             if(currItem.customPriceOrMultiplier === currItem.priceOrMultiplier)
                 currItem.customPriceOrMultiplier = undefined;
@@ -201,18 +929,15 @@ function addItem(itemNameFormatted, itemQuantity, itemPriceOrMultiplier, prepend
         return Promise.resolve();
     }
 
-    // don't want to add new items in this mode
     if(isInPriceCalculationMode)
         return Promise.resolve();
 
-    if(itemQuantity <= 0)
+    if(!getIsInfiniteQuantity(itemQuantity) && itemQuantity <= 0)
         return Promise.resolve();
 
     return getImageUrl(itemNameFormatted)
         .then(async imageUrl =>
         {
-            console.log(imageUrl);
-
             const maxPrice = await getMaxPrice(itemNameFormatted);
 
             items.set(itemNameFormatted, new Item(itemNameFormatted, itemQuantity, imageUrl, itemPriceOrMultiplier, maxPrice));
@@ -220,7 +945,6 @@ function addItem(itemNameFormatted, itemQuantity, itemPriceOrMultiplier, prepend
             saveAllToLocalStorage();
         });
 }
-
 
 function formatItemName(itemName)
 {
@@ -240,12 +964,29 @@ function handleAbbreviations(itemName)
     return abbreviationMapping.get(itemName.toLowerCase()) ?? itemName;
 }
 
-// Items with "abnormal" casing are abbreviations and items with the word "and" in them (I could just replace all and's with And, but that might not be very future-proof or have a weird edge-case)
 const specialNameMapping = new Map([
     ["Tnt_Barrel", "TNT_Barrel"],
     ["Blt_Salad", "BLT_Salad"],
+    ["Bem", "BEM Set"],
+    ["Bems", "BEM Set"],
+    ["Bemset", "BEM Set"],
+    ["Sem", "SEM Set"],
+    ["Sems", "SEM Set"],
+    ["Semset", "SEM Set"],
+    ["Tem", "TEM Set"],
+    ["Tems", "TEM Set"],
+    ["Temset", "TEM Set"],
+    ["Lem", "LEM Set"],
+    ["Lems", "LEM Set"],
+    ["Lemset", "LEM Set"],
+    ["Wax", "Beeswax"],
+    ["Lobster", "Lobster_Tail"],
+    ["Lobsters", "Lobster_Tail"],
+    ["Feather", "Duck_Feather"],
+    ["Feathers", "Duck_Feather"],
     ["Bacon_And_Eggs", "Bacon_and_Eggs"],
     ["Fish_And_Chips", "Fish_and_Chips"],
+    ["Lobster_Tails", "Lobster_Tail"],
     ["Peanut_Butter_And_Jelly_Sandwich", "Peanut_Butter_and_Jelly_Sandwich"],
     ["Frutti_Di_Mare_Pizza", "Frutti_di_Mare_Pizza"]
 ]);
@@ -255,6 +996,7 @@ function handleSpecialNames(itemName)
 }
 
 const customItemNames = new Set(["BEM Set", "SEM Set", "TEM Set", "LEM Set"]);
+const localImageItemNames = new Set([...customItemNames, "Lamb_Doner_Wrap", "Tower_Doner_Supreme", "Spicy_Bean_Doner"]);
 function setUpCustomItems()
 {
     for(let name of customItemNames)
@@ -263,25 +1005,20 @@ function setUpCustomItems()
 
 function getImageUrl(itemNameTitleSnakeCase)
 {
-    // the custom item names get mapped back to themselves when getting the title snake case list, so they are in their "normal" form already at this point
-    if(customItemNames.has(itemNameTitleSnakeCase))
-        // return Promise.resolve({url: `images/${itemNameTitleSnakeCase}.png`, isCustom: true});
-        return Promise.resolve(`images/${itemNameTitleSnakeCase}.png`); // TODO -- might want to make some map for these at some point (in the event that I want the custom images to be in multiple different folders, for whatever reason)
+    if(localImageItemNames.has(itemNameTitleSnakeCase))
 
-    // https://www.mediawiki.org/wiki/API:Imageinfo
-    // scaled down images don't work cross-site (it will work locally, but not on the hosted site)
+        return Promise.resolve(`images/${itemNameTitleSnakeCase}.png`);
+
     return fetch(`https://hayday.fandom.com/api.php?action=query&prop=imageinfo&iiprop=url&titles=File:${itemNameTitleSnakeCase}.png&format=json&origin=*`)
         .then(response => response.json())
         .then(data =>
         {
-            // console.log(data);
+
             const pages = data.query.pages;
             const pageId = Object.keys(pages)[0];
-            // for some reason, this works fine but the resultant wikia static image url yields a 404 from github pages ONLY when scaled down
-            // return pages[pageId].imageinfo[0].thumburl;
-            // return pages[pageId].imageinfo[0].thumburl.split("\/revision\/latest\/scale-to-width-down")[0];
-            return pages[pageId].imageinfo[0].url.split("\/revision\/")[0]; // or split on "\/revision\/latest", but I'm worried that something might change at some point
-            // return {url: pages[pageId].imageinfo[0].url.split("\/revision\/")[0], isCustom: false}; // or split on "\/revision\/latest", but I'm worried that something might change at some point
+
+            return pages[pageId].imageinfo[0].url.split("\/revision\/")[0];
+
         });
 }
 
@@ -289,29 +1026,33 @@ let previousSelection;
 function updateItemLayout()
 {
     itemTable.empty();
+    normalItemsPlaceholder.prop("hidden", !!items.size || getIsInTradeView());
+    updateScreenshotEmptyState();
 
-    // must do this up-front to ensure that the price gets properly update in the event that 1) all the items get cleared out, or 2) all the visible items get cleared out (if in price calc mode with hide unselected)
     const shouldShowSelection = getIsInPriceCalculationMode();
-    if(shouldShowSelection || getIsPriceShownInScreenshot())
-        updateTotalPrice();
+    updateTotalPrice();
 
     if(!items.size)
+    {
+        rescaleScreenshotRegion();
         return;
-
+    }
 
     previousSelection = undefined;
 
     let itemsUnsorted = [...items.values()];
-    // filter out unselected if the user wants them hidden
+
     if(shouldShowSelection && shouldHideUnselectedItems)
     {
         itemsUnsorted = itemsUnsorted.filter(item => item.isSelected);
 
-        // nothing to show (since all of the items got filtered out), so we are done (also don't need to worry about updating the total price, since it always gets updated after clicking on any item's cell)
         if(!itemsUnsorted.length)
+        {
+            rescaleScreenshotRegion();
             return;
+        }
     }
-    const itemsSortedDescending = itemsUnsorted.sort((item1, item2) => item2.quantity - item1.quantity);
+    const itemsSortedDescending = itemsUnsorted.sort((item1, item2) => getQuantitySortValue(item2.quantity) - getQuantitySortValue(item1.quantity));
 
     const itemCt = itemsSortedDescending.length;
     let rowCt = Math.ceil(itemCt / itemsPerRow);
@@ -329,7 +1070,6 @@ function updateItemLayout()
             if(shouldShowSelection && currItem.isSelected)
                 tableCell.classList.add("selected");
 
-            // must be mouseup to execute before the on click events for image, quantity, and label (since they must select the text after it has been overridden by this)
             $(tableCell).on("mouseup", {index: i, item: currItem}, (event) =>
             {
                 const item = event.data.item;
@@ -340,10 +1080,9 @@ function updateItemLayout()
                 if(!shouldShowSelection)
                     return;
 
-
                 const index = event.data.index;
                 const [first, last] = [index, previousSelection ?? index].sort((n1, n2) => n1 - n2);
-                if(event.shiftKey) // range additive
+                if(event.shiftKey)
                 {
                     $("#itemTable td").slice(first, last + 1)
                         .each((k, elem) =>
@@ -352,7 +1091,7 @@ function updateItemLayout()
                             setSelectedState(currItem, elem, true);
                         });
                 }
-                else if(event.altKey) // range subtractive; must use if else if... to make sure previousSelection always gets set
+                else if(event.altKey)
                 {
                     $("#itemTable td").slice(first, last + 1)
                         .each((k, elem) =>
@@ -361,7 +1100,7 @@ function updateItemLayout()
                             setSelectedState(currItem, elem, false);
                         });
                 }
-                else if(event.ctrlKey) // range toggle
+                else if(event.ctrlKey)
                 {
                     $("#itemTable td").slice(first, last + 1)
                         .each((k, elem) =>
@@ -370,7 +1109,7 @@ function updateItemLayout()
                             setSelectedState(currItem, elem, !currItem.isSelected);
                         });
                 }
-                else // normal selection (individual toggle)
+                else
                 {
                     const cell = event.currentTarget;
                     setSelectedState(item, cell, !item.isSelected);
@@ -386,13 +1125,10 @@ function updateItemLayout()
             image.classList.add("itemImage");
             $(image).on("click", () =>
             {
-                // only want to focus the item name input if not in price calculation mode
-                // TODO -- maybe the name input should never be focused in general, since it never really makes sense to want to keep all the same price and quantities, but change the name (effectively duplicating the item info but with a different item name)?
+
                 if(!shouldShowSelection)
                     itemNameInput.trigger("select");
-                // need to update the layout to not include items that just got deselected; I am only putting this in the event handler for clicking on the image itself, since I want the user to be able to modify price/mult and quantity without the item temporarily disappearing
-                // this does cause the problem of clicking the border of the cell toggling the item, but not hiding it when the user wants them hidden (since this event only listens for clicking on the image itself, not anywhere in the cell)
-                // TODO -- I'm wondering if I should make clicking on quantity/price not change the state of the selection in general, though that could be a bit annoying if the user is trying to quickly select items.
+
                 else if(shouldHideUnselectedItems)
                     updateItemLayout();
             });
@@ -406,19 +1142,17 @@ function updateItemLayout()
             });
 
             const priceLabel = document.createElement("p");
-            priceLabel.innerHTML = formatItemPriceLabel(currItem.priceOrMultiplier); // using innerHTML so that coin image is shown
+            priceLabel.innerHTML = formatItemPriceLabel(currItem.priceOrMultiplier);
             priceLabel.classList.add("label", "priceLabel");
             $(priceLabel).on("click", () =>
             {
                 itemPriceOrMultiplierInput.trigger("select");
             });
-            if(shouldHidePriceOrMultiplier)
-                priceLabel.style.display = "none";
 
             let customQuantityLabel, customPriceLabel;
             if(shouldShowSelection)
             {
-                // TODO -- I feel like some of this stuff is redundant/repeated stuff from setSelectedState() (though this stuff isn't technically in the DOM yet)
+
                 if(currItem.customQuantity !== undefined)
                 {
                     customQuantityLabel = document.createElement("p");
@@ -430,7 +1164,6 @@ function updateItemLayout()
                         itemQuantityInput.trigger("select");
                     });
 
-                    // starts less visible since item is selected and has a custom quantity
                     if(currItem.isSelected)
                         quantityLabel.style.opacity = 0.5;
                 }
@@ -438,7 +1171,7 @@ function updateItemLayout()
                 if(currItem.customPriceOrMultiplier !== undefined)
                 {
                     customPriceLabel = document.createElement("p");
-                    customPriceLabel.innerHTML = formatItemPriceLabel(currItem.customPriceOrMultiplier); // using innerHTML so that coin image is shown
+                    customPriceLabel.innerHTML = formatItemPriceLabel(currItem.customPriceOrMultiplier);
                     customPriceLabel.classList.add("label", "customLabel", "customPriceLabel");
                     customPriceLabel.hidden =  !currItem.isSelected;
                     $(customPriceLabel).on("click", () =>
@@ -446,7 +1179,6 @@ function updateItemLayout()
                         itemPriceOrMultiplierInput.trigger("select");
                     });
 
-                    // starts less visible since item is selected and has a custom price/mult
                     if(currItem.isSelected)
                         priceLabel.style.opacity = 0.5;
                 }
@@ -466,8 +1198,7 @@ function updateItemLayout()
         itemTable.append(tableRow);
     }
 
-    // I don't want to call this every time, since I feel like it slows down everything (I instead only call it when relevant things resize [items per row count, window size, bottom text])
-    // rescaleScreenshotRegion();
+    rescaleScreenshotRegion();
 }
 
 function formatItemPriceLabel(priceOrMultiplier)
@@ -477,27 +1208,47 @@ function formatItemPriceLabel(priceOrMultiplier)
     return priceOrMultiplier + (!priceStrTrimmed.length || priceStrTrimmed.endsWith('x') ? "" : `<img class="coin" src="${coinImageUrl}">`);
 }
 
+function createImageExportTarget()
+{
+    const targetWidth = screenshotRegion.outerWidth();
+    const targetHeight = screenshotRegion.outerHeight();
+    const holder = document.createElement("div");
+    holder.style.position = "fixed";
+    holder.style.top = "0";
+    holder.style.left = "-100000px";
+    holder.style.width = `${targetWidth}px`;
+    holder.style.height = `${targetHeight}px`;
+    holder.style.pointerEvents = "none";
+
+    const target = screenshotRegion[0].cloneNode(true);
+    target.style.transform = "";
+    target.style.marginLeft = "";
+    target.style.marginRight = "";
+    target.style.marginBottom = "";
+    target.classList.add("copyExport");
+
+    holder.appendChild(target);
+    document.body.appendChild(holder);
+    holder.style.width = `${target.offsetWidth}px`;
+    holder.style.height = `${target.offsetHeight}px`;
+    return {holder, target};
+}
 
 function copyImageToClipboard()
 {
     if(isActivelyCopyingImage)
         return;
     isActivelyCopyingImage = true;
+    setCopyImageStatus("copying", "Copying image...");
 
-    const createdBy = document.createElement("p");
-    // for those of you reading this, I would appreciate if this doesn't get removed from the generated image
-    createdBy.innerText = "jjcuber.github.io/hdig"; // used to say, "Tool Created by JJCUBER"
-    createdBy.classList.add("watermark");
-    if(!$(".watermark").length) // only append if the watermark always visible on screen didn't get removed
-        screenshotRegion.append(createdBy);
-
-    copyImageLoadingWheel.prop("hidden", false); // show loading wheel
-    screenshotRegion[0].style.transform = ""; // temporarily remove screenshot region scaling so that image isn't messed up
-    itemsPerRowSlider.prop("disabled", true); // temporarily disable items per row slider
+    copyImageLoadingWheel.prop("hidden", false);
+    fitGeneratedImageBottomText();
+    const exportTarget = createImageExportTarget();
+    itemsPerRowSlider.prop("disabled", true);
 
     let screenshotBlob;
     let clipboardWrittenPromise;
-    // In order for copying an image to clipboard on iOS to work, you HAVE to effectively do it directly in the click (more accurately, pointerup) event; this means that having some promises .then()'d is not "acceptable": https://stackoverflow.com/questions/65356108/how-to-use-clipboard-api-to-write-image-to-clipboard-in-safari  AND  https://stackoverflow.com/questions/62327358/javascript-clipboard-api-safari-ios-notallowederror-message  AND  https://webkit.org/blog/10247/new-webkit-features-in-safari-13-1/
+
     if(isRunningIOS())
     {
         clipboardWrittenPromise = navigator.clipboard.write(
@@ -506,12 +1257,11 @@ function copyImageToClipboard()
                     "image/png":
                         (async () =>
                         {
-                            // need to run a second time on iOS (it sounds like just returning the .toBlob call and .then()'ing it doesn't work based on https://github.com/bubkoo/html-to-image/issues/52#issuecomment-1255708420 , so that's why I'm awaiting it here [I don't think that would really be all so different from just returning and calling .then, but I will just do it like this since it seems to work])
-                            // TODO -- it sounds like this might also happen with safari on mac occasionally?  I might might also want to check for the browser being safari.
-                            await htmlToImage.toBlob(screenshotRegion[0]);
-                            let blob = await htmlToImage.toBlob(screenshotRegion[0]);
 
-                            screenshotBlob = blob; // I'm pretty sure this has to be done separately, otherwise iOS gets mad (probably due to using a variable of outer scope that is "tainted")
+                            await htmlToImage.toBlob(exportTarget.target);
+                            let blob = await htmlToImage.toBlob(exportTarget.target);
+
+                            screenshotBlob = blob;
 
                             return blob;
                         })()
@@ -519,47 +1269,61 @@ function copyImageToClipboard()
             )]
         );
     }
-    else // not iOS
+    else
     {
-        // htmlToImage.toBlob(..., {canvasWidth: ..., canvasHeight: ..., width: ..., height: ...}) // there are options for canvas Width/Height, along with node's Width/Height, but they aren't really what I'm looking for (zooming out far on the page itself still modifies the scaling of everything)
-        clipboardWrittenPromise = htmlToImage.toBlob(screenshotRegion[0])
-            .then(blob => screenshotBlob = blob) // stores the blob in case the error is caught later (had to separate this since firefox doesn't have a ClipboardItem at all; the screenShot = blob code would never get parsed and cause the failed copy overly to never show)
+
+        clipboardWrittenPromise = htmlToImage.toBlob(exportTarget.target)
+            .then(blob => screenshotBlob = blob)
             .then(blob => new ClipboardItem({"image/png": blob}))
             .then(clipboardItem => navigator.clipboard.write([clipboardItem]));
     }
 
     clipboardWrittenPromise
-        .then(createSuccessfulCopyNotification)
+        .then(() =>
+        {
+            createSuccessfulCopyNotification();
+            setCopyImageStatus("success", "Image copied");
+        })
         .catch(e =>
         {
             console.log("Unable to generate image and/or copy it to clipboard --", e);
 
             createFailedCopyNotification();
+            setCopyImageStatus("error", "Unable to copy image");
 
-            // show failed copy overlay if the screenshot was successfully generated
             if(screenshotBlob)
             {
                 failedCopyOverlay.imageHolder[0].src = window.URL.createObjectURL(screenshotBlob);
 
-
-                // shows the failed copy overlay
-
                 failedCopyOverlay.overlay.prop("hidden", false);
-                // disables scrolling the main page and removes the scrollbar from the side while the settings button is focused ( https://stackoverflow.com/questions/9280258/prevent-body-scrolling-but-allow-overlay-scrolling )
+
                 $("html, body").css("overflow-y", "hidden");
-                // prevents the screenshot region from shifting over to the right due to the scrollbar now missing ( https://stackoverflow.com/questions/1417934/how-to-prevent-scrollbar-from-repositioning-web-page and https://css-tricks.com/elegant-fix-jumping-scrollbar-issue/ and https://aykevl.nl/2014/09/fix-jumping-scrollbar )
+
                 screenshotRegion.css("margin-right", "calc(100vw - 100%)");
             }
         })
         .finally(() =>
         {
-            $(createdBy).remove();
+            exportTarget.holder.remove();
             isActivelyCopyingImage = false;
 
             copyImageLoadingWheel.prop("hidden", true);
-            rescaleScreenshotRegion(); // restore screenshot region's scaling
+            rescaleScreenshotRegion();
             itemsPerRowSlider.prop("disabled", false);
         });
+}
+
+let copyImageStatusTimeout;
+function setCopyImageStatus(state, message)
+{
+    clearTimeout(copyImageStatusTimeout);
+    copyImageStatus.removeClass("copying success error");
+    copyImageStatus.addClass(state);
+    copyImageStatus.text(message);
+    $(".copyImageToClipboardButton").prop("disabled", state === "copying");
+
+    if(state !== "copying")
+        copyImageStatusTimeout = setTimeout(() => copyImageStatus.text("").removeClass(state), 4200);
 }
 
 function copyAsTextListToClipboard()
@@ -567,21 +1331,20 @@ function copyAsTextListToClipboard()
     const itemStrs = [];
 
     const format = textListFormatInput.val();
-    const itemsSortedDescending = [...items.values()].sort((item1, item2) => item2.quantity - item1.quantity);
+    const itemsSortedDescending = [...items.values()].sort((item1, item2) => getQuantitySortValue(item2.quantity) - getQuantitySortValue(item1.quantity));
     for(let item of itemsSortedDescending)
         itemStrs.push(formatTextListItem(format, item));
 
     const textList = itemStrs.join(textListSeparatorRadios[textListSeparatorSelectedRadio].value);
     navigator.clipboard.writeText(textList)
         .then(createSuccessfulCopyNotification)
-        //.catch(e => console.log(e));
+
         .catch(console.log);
 }
 
-// maybe include Item somewhere in this function name
 function getMaxPrice(itemNameTitleSnakeCase)
 {
-    // the custom item names get mapped back to themselves when getting the title snake case list, so they are in their "normal" form already at this point
+
     if(customItemNames.has(itemNameTitleSnakeCase))
         return Promise.resolve(NaN);
 
@@ -592,7 +1355,7 @@ function getMaxPrice(itemNameTitleSnakeCase)
             action: "parse",
             page: properPageName,
             format: "json",
-            prop: "text", // this makes it so it only fetches the text portion; I might want to swap over to the properties portion instead?  TODO -- look more into this.
+            prop: "text",
         });
 
     return fetch(url)
@@ -600,9 +1363,9 @@ function getMaxPrice(itemNameTitleSnakeCase)
         .then(json => json.parse.text["*"])
         .then(html =>
         {
-            // const priceRange = $(html).find("aside.portable-infobox span[title='Coin(s)']").first().parent().text();
+
             const priceRange = $(html).find("aside.portable-infobox div[data-source='price']").children().text();
-            const maxPrice = parseInt(priceRange.split(" to ")[1].replaceAll(",", "")); // parseInt doesn't handle separators
+            const maxPrice = parseInt(priceRange.split(" to ")[1].replaceAll(",", ""));
             console.log(itemNameTitleSnakeCase, "max price:", maxPrice);
             return maxPrice;
         }).catch(e =>
@@ -614,8 +1377,6 @@ function getMaxPrice(itemNameTitleSnakeCase)
         });
 }
 
-// Some hay day wiki url's have special characters and/or differ from the normal in-game names of items; the _ isn't really needed since the api used for getting the site "normalizes" the input
-// I was contemplating using the api for query with search, but I don't want to risk getting the wrong page/item price for a given item
 const specialPageNameMapping = new Map([
     ["Shepherds_Pie", "Shepherd's_Pie"],
     ["Caffe_Latte", "Caffè_Latte"],
@@ -631,9 +1392,7 @@ async function ensureItemsHaveMaxPriceSet()
     let shouldSave = false;
     for(let item of items.values())
     {
-        // conversion to JSON using stringify makes NaN become null, so I am adding it back here; this is to ensure any calculations with this value yield NaN, instead of something like 0 (null*5 === 0)
-        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
-        // https://stackoverflow.com/questions/21896792/force-json-stringify-to-emit-nan-infinity-or-js-json-lib-that-does-so
+
         if(item.maxPrice === null)
         {
             item.maxPrice = NaN;
@@ -645,23 +1404,13 @@ async function ensureItemsHaveMaxPriceSet()
         item.maxPrice = await getMaxPrice(item.name);
         shouldSave = true;
 
-        // updates the total price along the way if currently in price calculation mode (I'm doing this instead of only doing it once at the end so that the user can see the price updating as it gets loaded)
-        // TODO -- I don't think I need || shouldShow... here currently, though I might want/need it if I allow for persistent selections at some point
-        if(getIsInPriceCalculationMode() || getIsPriceShownInScreenshot())
+        if(getIsInPriceCalculationMode() || !getIsInTradeView())
             updateTotalPrice();
     }
 
-    // I don't foresee any issues with this randomly saving (since this async function is called synchronously to prevent the page from getting stuck while this function executes) because any modification to the items elsewhere would ... never mind
-    // this might cause issues, since it could save while in the middle of modifying an item abbreviation; if the user never "commits" these changes themself by closing out of the site (which might prevent the change event from occurring?), then some partially modified state would be saved randomly from this function; it might just be best to have this be redone each time the site loads until the user modifies something themself which forces a save all.
-    // if(shouldSave)
-        // saveAllToLocalStorage();
-
-
-    // the solution is to only save the items, since items don't carry any intermediate state (any modification to items is immediately saved to local storage)
     if(shouldSave)
         saveItemsToLocalStorage();
 }
-
 
 function formatTextListItem(format, item)
 {
@@ -670,16 +1419,20 @@ function formatTextListItem(format, item)
         .replaceAll("{{price}}", item.priceOrMultiplier);
 }
 
-
 function calculateTotalSelectedPrice()
 {
+    if(getHasInfiniteQuantity(items.values(), false, true))
+    {
+        totalSelectedPriceMessageHolder.text("");
+        totalSelectedPriceMessageHolder.prop("hidden", true);
+        totalSelectedPriceEquationHolder.text("");
+        return undefined;
+    }
+
     let total = 0;
     let equations = [];
-    // TODO -- I should instead filter this BEFORE sorting (doesn't change anything functionally, it's just more performant that way)
-    // we go through it in quantity descending order to make the equation be in the same order as the items in the grid
-    // TODO -- now that this function gets called from updateItemLayout() whenever showing price in screenshot is enabled, I should probably be caching itemsSortedDescending
-    // NOTE: this sorts by descending so that the price gets calculated in the same order as it is displayed (this is important for both the order of the generated price equation and for the order in which warning/error messages occur and "halt" the calculation)
-    const itemsSortedDescending = [...items.values()].sort((item1, item2) => item2.quantity - item1.quantity);
+
+    const itemsSortedDescending = [...items.values()].sort((item1, item2) => getQuantitySortValue(item2.quantity) - getQuantitySortValue(item1.quantity));
     let message, isError = false;
     for(let item of itemsSortedDescending)
     {
@@ -688,10 +1441,8 @@ function calculateTotalSelectedPrice()
 
         let [itemTotalPrice, equation, error, warning] = item.calculateTotalPrice();
 
-        // this is always done since it'll make sure that the total becomes NaN if there is an error
         total += itemTotalPrice;
 
-        // should push the current equation, even if it causes an error below (so that the user can see where in the equation it happened)
         equations.push(equation);
 
         if(error)
@@ -707,7 +1458,6 @@ function calculateTotalSelectedPrice()
         {
             console.log(warning);
 
-            // only want to show first warning
             message ??= warning;
         }
     }
@@ -725,94 +1475,74 @@ function calculateTotalSelectedPrice()
     return total;
 }
 
-// calculates the total price of ALL items, selected or not (does not modify the price calculation area's message holder stuff)
+function updateTotalPrice()
+{
+    if(getIsInTradeView())
+    {
+        screenshotPriceHolder.empty();
+        updatePriceCalculationDetailsVisibility();
+        return;
+    }
+
+    const totalSelectedPrice = calculateTotalSelectedPrice();
+
+    if(!priceCalculationItem)
+        return;
+
+    const isInPriceCalculationMode = getIsInPriceCalculationMode();
+    const totalPrice = isInPriceCalculationMode ? totalSelectedPrice : calculateTotalPrice();
+    const itemCount = isInPriceCalculationMode ? getSelectedItemCount() : getTotalItemCount();
+    const totalPriceHTML = items.size ? getTotalPriceHTML(totalPrice, itemCount) : "";
+    screenshotPriceHolder.html(totalPriceHTML);
+
+    updatePriceCalculationDetailsVisibility();
+}
+
+function getTotalPriceHTML(totalPrice, itemCount)
+{
+    const totalsAreUnavailable = totalPrice === undefined || itemCount === undefined || !Number.isFinite(totalPrice);
+    const totalPriceFormatted = totalsAreUnavailable ? "N/A" : getLocaleString(totalPrice);
+    const totalPriceInItems = totalsAreUnavailable ? undefined : +(totalPrice / priceCalculationItem.maxPrice).toFixed(2);
+    const totalPriceInItemsFormatted = totalsAreUnavailable ? "N/A" : getLocaleString(totalPriceInItems);
+    const itemCountFormatted = itemCount === undefined ? "N/A" : getLocaleString(itemCount);
+    return `${totalPriceFormatted}<img src="${coinImageUrl}" style="width: 14px; height: 14px;"><span style="display: inline-block; width: 10px;"></span>${totalPriceInItemsFormatted}<img src="${priceCalculationItem.url}" style="width: 14px; height: 14px;"><span style="display: inline-block; width: 10px;"></span>(${itemCountFormatted} item${itemCount === 1 ? "" : "s"})`;
+}
+
+function getIsInPriceCalculationMode()
+{
+    return isPriceCalculationModeEnabled;
+}
+
+function updatePriceCalculationDetailsVisibility()
+{
+    const shouldShowEquation = !totalSelectedPriceEquationHolder.is("[hidden]") && !!totalSelectedPriceEquationHolder.text();
+    const shouldShowMessage = !totalSelectedPriceMessageHolder.is("[hidden]") && !!totalSelectedPriceMessageHolder.text();
+    totalSelectedPriceArea.prop("hidden", getIsInTradeView() || !getIsInPriceCalculationMode() || (!shouldShowEquation && !shouldShowMessage));
+}
+
 function calculateTotalPrice()
 {
+    if(getHasInfiniteQuantity(items.values(), true))
+        return undefined;
+
     let total = 0;
-    // TODO -- I should instead filter this BEFORE sorting (doesn't change anything functionally, it's just more performant that way)
-    // we go through it in quantity descending order to make the equation be in the same order as the items in the grid
-    // TODO -- now that this function gets called from updateItemLayout() whenever showing price in screenshot is enabled, I should probably be caching itemsSortedDescending
-    // Technically, this doesn't need to sort by descending, since unlike the function which calculates total for the SELECTED price, this one is doing it for all; if an error occurs, the outcome of the values will be NaN regardless of order (the only thing that will be different is what gets logged in the console in the event of an error)
-    const itemsSortedDescending = [...items.values()].sort((item1, item2) => item2.quantity - item1.quantity);
+    const itemsSortedDescending = [...items.values()].sort((item1, item2) => getQuantitySortValue(item2.quantity) - getQuantitySortValue(item1.quantity));
     for(let item of itemsSortedDescending)
     {
-        let [itemTotalPrice, equation, error, warning] = item.calculateTotalPrice(true); // ignore custom values
+        const [itemTotalPrice, , error] = item.calculateTotalPrice(true);
+        if(error || !Number.isFinite(itemTotalPrice))
+            return undefined;
 
-        // this is always done since it'll make sure that the total becomes NaN if there is an error
         total += itemTotalPrice;
-
-        if(error)
-        {
-            console.log(error);
-            break;
-        }
     }
 
     return total;
 }
 
-// TODO -- it might be better to check whether in price calculation mode here (and/or if price is shown in the screenshot) instead of everywhere before calling this function, though that might be slower in scenarios where I have the state (of whether being in price calculation mode or not) cached.
-function updateTotalPrice()
-{
-    const totalSelectedPrice = calculateTotalSelectedPrice();
-    const totalSelectedPriceFormatted = getLocaleString(totalSelectedPrice);
-
-    // hasn't loaded yet
-    if(!priceCalculationItem)
-        return;
-
-    const totalSelectedPriceInItems = +(totalSelectedPrice / priceCalculationItem.maxPrice).toFixed(2); // the unary + converts it back to a number, removing trailing zeroes
-    const totalSelectedPriceInItemsFormatted = getLocaleString(totalSelectedPriceInItems);
-
-    const selectedCount = getSelectedItemCount();
-    const selectedCountFormatted = getLocaleString(selectedCount);
-
-    const totalSelectedPriceHTML = `${totalSelectedPriceFormatted}<img src="${coinImageUrl}" style="width: 14px; height: 14px;"><span style="display: inline-block; width: 10px;"></span>${totalSelectedPriceInItemsFormatted}<img src="${priceCalculationItem.url}" style="width: 14px; height: 14px;"><span style="display: inline-block; width: 10px;"></span>(${selectedCountFormatted} item${selectedCount === 1 ? "" : "s"})`;
-
-    const isInPriceCalculationMode = getIsInPriceCalculationMode();
-
-    if(isInPriceCalculationMode)
-        totalSelectedPriceHolder.html(totalSelectedPriceHTML);
-
-    if(getIsPriceShownInScreenshot())
-    {
-        if(!isInPriceCalculationMode && shouldShowTotalInNormalMode)
-        {
-            const totalPrice = calculateTotalPrice();
-            const totalPriceFormatted = getLocaleString(totalPrice);
-
-            const totalPriceInItems = +(totalPrice / priceCalculationItem.maxPrice).toFixed(2); // the unary + converts it back to a number, removing trailing zeroes
-            const totalPriceInItemsFormatted = getLocaleString(totalPriceInItems);
-
-            const itemCount = getTotalItemCount();
-            const itemCountFormatted = getLocaleString(itemCount);
-
-            const totalPriceHTML = `${totalPriceFormatted}<img src="${coinImageUrl}" style="width: 14px; height: 14px;"><span style="display: inline-block; width: 10px;"></span>${totalPriceInItemsFormatted}<img src="${priceCalculationItem.url}" style="width: 14px; height: 14px;"><span style="display: inline-block; width: 10px;"></span>(${itemCountFormatted} item${itemCount === 1 ? "" : "s"})`;
-            screenshotPriceHolder.html(totalPriceHTML);
-        }
-        else
-            screenshotPriceHolder.html(totalSelectedPriceHTML);
-    }
-}
-
-
-function getIsInPriceCalculationMode()
-{
-    return !totalSelectedPriceArea.is("[hidden]");
-}
-
-function getIsPriceShownInScreenshot()
-{
-    // TODO -- for this and other checkbox-related settings, should I be looking at the settings themselves for the state of things, or should I be looking at the elements that are set as visible, hidden, etc. like what I do right here?
-    return !screenshotPriceHolder.prop("hidden");
-}
-
-
 function setSelectedState(item, cell, isSelected)
 {
     item.isSelected = isSelected;
 
-    // TODO -- classList.toggle() is a thing, maybe use this instead of the if/else?  toggle can either toggle based on whether the class is on the element or based on whether the second parameter passed is true.  https://developer.mozilla.org/en-US/docs/Web/API/DOMTokenList/toggle
     if(isSelected)
         cell.classList.add("selected");
     else
@@ -821,7 +1551,6 @@ function setSelectedState(item, cell, isSelected)
     const cellSelector = $(cell);
     cellSelector.find(".customLabel").prop("hidden", !isSelected);
 
-    // make quantity/price less visible when this item is selected and has a custom value
     cellSelector.find(".quantityLabel").css("opacity", isSelected && item.customQuantity !== undefined ? 0.5 : 1);
     cellSelector.find(".priceLabel").css("opacity", isSelected && item.customPriceOrMultiplier !== undefined ? 0.5 : 1);
 }
@@ -842,7 +1571,6 @@ function setSelectedStateAll(items, cells, isSelected)
     }
 }
 
-
 async function prepareAllItemNames()
 {
     const itemNames = await getAllItemNames();
@@ -854,9 +1582,8 @@ async function prepareAllItemNames()
     preparedItemNames = prepared;
 }
 
-// gotten from https://hayday.fandom.com/wiki/Supplies (if I got the images for these the same way as I did for everything else, there would be a ton of building images listed as items)
 const suppliesNames = ["Axe", "Dynamite", "Saw", "Shovel", "TNT Barrel", "Pickaxe", "Bolt", "Brick", "Duct Tape", "Hammer", "Hand Drill", "Nail", "Paint Bucket", "Plank", "Screw", "Stone Block", "Tar Bucket", "Wood Panel", "Land Deed", "Mallet", "Map Piece", "Marker Stake"];
-// extraneous "item"/image names (due to how the item names are fetched) that shouldn't be included; "Honey Mask" is a duplicate of "Honey Face Mask"
+
 const nameBlacklist = new Set(["Chicken Feed", "Cow Feed", "Pig Feed", "Sheep Feed", "Red Lure", "Green Lure", "Blue Lure", "Purple Lure", "Gold Lure", "Fishing Net", "Mystery Net", "Goat Feed", "Lobster Trap", "Duck Trap", "Honey Mask", "Field", "Apple Tree", "Shop Icon", "Coins", "Experience", "Caffè Latte", "Caffè Mocha"]);
 async function getAllItemNames()
 {
@@ -868,7 +1595,7 @@ async function getAllItemNames()
                 action: "parse",
                 page: pageName,
                 format: "json",
-                prop: "images", // this makes it so it only fetches the images portion
+                prop: "images",
             });
 
         return fetch(url)
@@ -881,14 +1608,12 @@ async function getAllItemNames()
     const cropNames = await fetchPortion("Crops");
     const animalProductNames = await fetchPortion("Animal_Goods");
 
-    // concat it all together and include custom item names after filtering (just in case there ends up being overlap at some point in the future)
-    return productNames.concat(cropNames, animalProductNames, suppliesNames).filter(name => !nameBlacklist.has(name)).concat([...customItemNames.values()]);
+    return productNames.concat(cropNames, animalProductNames, suppliesNames).filter(name => !nameBlacklist.has(name)).concat([...localImageItemNames.values()].map(name => name.replaceAll("_", " ")));
 }
 
 function updateFuzzyMatches(itemInput, fuzzyMatchesHolder)
 {
-    // don't want the list of matches popping up when the user is trying to select/deselect items (this only applies to the item name field, not the price calculation item field in settings)
-    // also don't want to continue if the item names haven't been prepared yet; I could easily set a flag for this case and just call this function again when the prepared items are completely set up, but that would have an extra edge case of whether the name input is still focused (ultimately, the item names should get loaded and prepared quite quickly, so the user shouldn't really run into this in practice)
+
     if((itemInput === itemNameInput && getIsInPriceCalculationMode()) || !preparedItemNames)
         return;
 
@@ -908,20 +1633,18 @@ function updateFuzzyMatches(itemInput, fuzzyMatchesHolder)
         $(button).on("mousedown", {itemName: match.target}, (event, customParams) =>
         {
             itemInput.val(event.data.itemName);
-            // want to trigger a change immediately for the price calculation item field
-            // (I have noticed that this already gets triggered automatically if the user has manually typed anything before physically clicking on one of the buttons; however, it does not trigger if the user just continues to sequentially select multiple fuzzy matches without physically editing the text in between said clicks.  As such, this manual trigger is required even though it sometimes causes a double trigger of the change event [which shouldn't cause any issues].)
+
             if(itemInput === priceCalculationItemInput)
                 itemInput.trigger("change");
 
-            // need to wait for the mouseup event in order to refocus/reselect the input field (using .one to make sure it only happens once, and using the document as the object to ensure this occurs no matter where on the screen the mouseup happens)
-            // TODO -- I need to standardise all of my arrow functions; particularly, I need to decide whether to always include the () even for single parameter, and I need to determine whether it is a good idea to have arrow functions like this that are a single line (without {}) which calls a function (I don't know how "proper" this is, and it could easily lead to accidentally forgetting the () =>, causing it to misbehave)
-            // TODO -- should I keep the matches empty after the user selects one (until they start typing again)?
-            if(!customParams || !customParams.usedKeyboard) // don't want to do this if the user selected a match using the keyboard via 1-9,0
-                // This must be applied to every element due to how events bubble up (if you release your mouse on an item cell after clicking down on a fuzzy match, it will trigger the item's events first before bubbling/propagating up; this means that the only solution is to put the handler on every element, stop propogation, and cancel all the remaining events added via this "namespace" (.fuzzyMatchClick)).  Unfortunately, managing to click the border of an item cell on the mouseup event will end up executing that first, likely do to having same priority but having different event added order (this event is added after).
-                // TODO -- I might be able to fix this by storing the values for all 3 inputs and just modify it in my event listener below, which means that I would want to go back to using $(document) so that it has the least specificity (which means it will execute last, reverting all the values to normal).
+            if(!customParams || !customParams.usedKeyboard)
+
                 $("*").one("mouseup.fuzzyMatchClick", (e) =>
                 {
-                    if(shouldFocusQuantityOnAutocomplete && itemInput === itemNameInput)
+                    const tradeSide = getTradeSideForInput(itemInput);
+                    if(tradeSide)
+                        focusTradeQuantityInput(tradeSide);
+                    else if(shouldFocusQuantityOnAutocomplete && itemInput === itemNameInput)
                         itemQuantityInput.trigger("select");
                     else
                         itemInput.trigger("focus");
@@ -929,13 +1652,18 @@ function updateFuzzyMatches(itemInput, fuzzyMatchesHolder)
 
                     $("*").off(".fuzzyMatchClick");
                 });
-            else if(shouldFocusQuantityOnAutocomplete && itemInput === itemNameInput)
-                itemQuantityInput.trigger("select");
+            else
+            {
+                const tradeSide = getTradeSideForInput(itemInput);
+                if(tradeSide)
+                    focusTradeQuantityInput(tradeSide);
+                else if(shouldFocusQuantityOnAutocomplete && itemInput === itemNameInput)
+                    itemQuantityInput.trigger("select");
+            }
         });
 
         const p = document.createElement("p");
         p.innerText = i === 10 ? 0 : i;
-
 
         div.appendChild(button);
         div.appendChild(p);
@@ -946,7 +1674,6 @@ function updateFuzzyMatches(itemInput, fuzzyMatchesHolder)
     fuzzyMatchesHolder.empty();
     fuzzyMatchesHolder[0].append(...matchHTMLs);
 }
-
 
 function createSuccessfulCopyNotification()
 {
@@ -966,20 +1693,64 @@ function createFailedCopyNotification()
     document.body.appendChild(notification);
 }
 
+function fitGeneratedImageBottomText()
+{
+    if(!bottomText?.length || bottomText.prop("hidden"))
+        return;
 
-// TODO -- I might want to eventually be rescaling the cells, though that would be a lot of work to modify all the css
+    const bottomTextElement = bottomText[0];
+    bottomTextElement.style.fontSize = "";
+
+    const screenshotStyles = getComputedStyle(screenshotRegion[0]);
+    const availableWidth = screenshotRegion[0].clientWidth -
+        parseFloat(screenshotStyles.paddingLeft) -
+        parseFloat(screenshotStyles.paddingRight);
+    if(availableWidth <= 0)
+        return;
+
+    const bottomTextStyles = getComputedStyle(bottomTextElement);
+    const maxFontSize = 50;
+    const measurementCanvas = document.createElement("canvas");
+    const context = measurementCanvas.getContext("2d");
+    context.font = `${bottomTextStyles.fontWeight} ${maxFontSize}px ${bottomTextStyles.fontFamily}`;
+
+    const longestLineWidth = bottomTextElement.innerText
+        .split("\n")
+        .reduce((width, line) => Math.max(width, context.measureText(line).width), 0);
+    const fontSize = longestLineWidth > availableWidth
+        ? Math.max(12, maxFontSize * availableWidth / longestLineWidth * 0.96)
+        : maxFontSize;
+
+    bottomTextElement.style.fontSize = `${fontSize}px`;
+}
+
 function rescaleScreenshotRegion()
 {
-    // If the user starts scrolling, zooming in, etc, don't want to rescale the screenshot region (I noticed this happening if a user on iOS starts scrolling in such a way where the address bar grows in size [triggering window resize])
+
     if(isActivelyCopyingImage)
         return;
 
-    // I take the min of these to ensure that everything always stays on screen (it takes into account both a longer bottom text and what the width would be if all items were in the table)
-    const heuristicFactor = document.documentElement.clientWidth / ((itemsPerRow + 1) * 110); // estimated width of table with all items in row filled in
-    const actualFactor = 0.9 * document.documentElement.clientWidth / screenshotRegion.width(); // actual calculated width of table (including bottom text)
+    const previewStage = $(".previewStage");
+    const previewCanvas = $(".previewCanvas");
+    const availableWidth = previewStage.width() || document.documentElement.clientWidth;
+    screenshotRegion[0].style.transform = "";
+    screenshotRegion.css({
+        "margin-left": "",
+        "margin-right": "",
+        "margin-bottom": ""
+    });
+    fitGeneratedImageBottomText();
+    const screenshotWidth = screenshotRegion.outerWidth();
+    const screenshotHeight = screenshotRegion.outerHeight();
+    const actualFactor = 0.96 * availableWidth / screenshotWidth;
 
-    const scaleFactor = Math.min(1, heuristicFactor, actualFactor); // 1 is included in the list of mins because I don't want to ever scale up, only down (if needed)
+    const scaleFactor = Math.min(1.2, actualFactor);
     screenshotRegion[0].style.transform = `scale(${scaleFactor})`;
+    previewCanvas.css({
+        "width": `${screenshotWidth * scaleFactor}px`,
+        "height": `${screenshotHeight * scaleFactor}px`
+    });
+    previewStage.css("min-height", `${Math.max(160, previewCanvas.outerHeight() + 32)}px`);
 }
 
 function getSelectedItemCount()
@@ -988,7 +1759,13 @@ function getSelectedItemCount()
     for(let item of [...items.values()])
     {
         if(item.isSelected)
-            count += item.customQuantity ?? item.quantity;
+        {
+            const quantity = item.customQuantity ?? item.quantity;
+            if(getIsInfiniteQuantity(quantity))
+                return undefined;
+
+            count += quantity;
+        }
     }
 
     return count;
@@ -998,8 +1775,12 @@ function getTotalItemCount()
 {
     let count = 0;
     for(let item of [...items.values()])
-        count += item.quantity; // ignore custom quantities
+    {
+        if(getIsInfiniteQuantity(item.quantity))
+            return undefined;
+
+        count += item.quantity;
+    }
 
     return count;
 }
-

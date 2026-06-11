@@ -10,28 +10,28 @@ body
     font-family: Arial;
 }
 
+body.tradeView
+{
+    background-color: #fff7bf;
+    color: #18130a;
+}
+
 button
 {
-    /* mimicking chromium-based colors */
+
     color: black;
     border-color: black;
-    background-color: rgba(240, 240, 240); /* found this value from https://github.com/chromium/chromium/blob/6272343bc05f9498f366682399eb0aa21f76ff47/content/child/webthemeengine_impl_default_browsertest.cc based on the names of colors in the devtools inspector */
+    background-color: rgba(240, 240, 240);
 
     transition: color 0.15s, background-color 0.15s, border-color 0.15s;
 
-    /* This combined with the change to divs separating groups of buttons maintains the 10px gap, while also having a slightly less 8px gap between wrapped buttons (buttons that wrap to the next line); before, there would be no gap between these vertically, making it look bad */
     margin-top: 4px;
     margin-bottom: 4px;
 }
 
 button:disabled
 {
-    /* mimicking the coloring/styling used by default on chromium-based browsers; found these values from devtools inspector */
-    /* -------- */
-    /* color: -internal-light-dark(rgba(16, 16, 16, 0.3), rgba(255, 255, 255, 0.3)); */
-    /* background-color: -internal-light-dark(rgba(239, 239, 239, 0.3), rgba(19, 1, 1, 0.3)); */
-    /* border-color: -internal-light-dark(rgba(118, 118, 118, 0.3), rgba(195, 195, 195, 0.3)); */
-    /* -------- */
+
     color: rgba(16, 16, 16, 0.3);
     background-color: rgba(239, 239, 239, 0.3);
     border-color: rgba(118, 118, 118, 0.3);
@@ -47,7 +47,6 @@ button:hover:enabled
     cursor: pointer;
 }
 
-/* puts margin between consecutive buttons: https://developer.mozilla.org/en-US/docs/Web/CSS/Adjacent_sibling_combinator */
 button + button
 {
     margin-left: 10px;
@@ -68,7 +67,6 @@ input, textarea
     background-color: #ff05;
 }
 
-/* only want to affect text-type inputs; otherwise, it messes up sliders, radio buttons, and checkboxes */
 button, input[type="text"], textarea, select
 {
     border-radius: 0;
@@ -108,23 +106,25 @@ td:hover
 
 td.selected:hover
 {
-    border-color: purple; /* orange or pink might also work well */
+    border-color: purple;
 }
-
-
 
 #bottomText
 {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
     text-align: center;
 
     font-size: 50px;
     font-weight: bold;
 
-    margin-top: 10px;
-    margin-bottom: 0px; /* this makes the screenshotRegion div wrap more tightly around this */
+    margin-top: 18px;
+    margin-bottom: 0px;
+    padding-top: 10px;
 
-    /* this makes it so that text never wraps (other than where the <br>'s are put, which come from the multiline input), and it preserves consecutive spaces instead of collapsing them into 1; this is required for images to properly generate on android (otherwise the wrapping isn't taken into account as part of the DOM's calculated regions, making it go out of the image and over top the watermark) */
-    white-space: pre;
+    white-space: pre-wrap;
 }
 
 #bottomText:hover
@@ -134,7 +134,7 @@ td.selected:hover
 
 #itemTable
 {
-    margin: 0 auto; /* makes the table stay centered in the div ( https://stackoverflow.com/questions/7059394/how-to-position-a-table-at-the-center-of-div-horizontally-vertically ) */
+    margin: 0 auto;
 }
 
 .itemCell
@@ -144,13 +144,12 @@ td.selected:hover
 
 .itemImage
 {
-    /* preserves aspect ratio (prevents stretching); might want to find a way to scale up images smaller than the 100x100 of the cell itself? */
+
     width: 100px;
     height: 100px;
-    object-fit: contain; /* prevents stretching the image; object-fit:scale-down seems like it does the same thing, except it blows up items smaller than the 100x100 which also don't have a 1:1 aspect ratio */
+    object-fit: contain;
 
-    /* Makes the item images stand out a touch more */
-    --itemImageOutlineColor: rgb(0, 0, 0, 0.5); /* default */
+    --itemImageOutlineColor: rgb(0, 0, 0, 0.5);
     filter: drop-shadow(0 0 2px var(--itemImageOutlineColor));
     transition: filter 0.2s;
 }
@@ -158,10 +157,6 @@ td.selected:hover
 {
     --itemImageOutlineColor: rgb(255, 165, 0, 0.8);
 }
-
-
-/* the positioning for both of these labels behave weird; maybe fix at some point */
-
 
 .label
 {
@@ -171,27 +166,14 @@ td.selected:hover
 
     color: white;
 
-    /* TODO -- I might want to switch over to the non-legacy format of "r g b / a", instead of "r, g, b, a" ( https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/rgb ) */
-    --labelOutlineColor: 0, 0, 0; /* default */
-    /* IMPORTANT -- MUST use rgb comma list for the variable when specifying colors, not color names! */
+    --labelOutlineColor: 0, 0, 0;
+
     filter:
         drop-shadow(0 0 1px rgb(var(--labelOutlineColor), 0.8))
         drop-shadow(0 0 1px rgb(var(--labelOutlineColor), 0.8))
         drop-shadow(0 0 5px rgb(var(--labelOutlineColor), 0.8));
     transition: filter 0.2s;
 
-    /* TODO -- try to improve the sharpness of the text "outline" with something like this (this seems to be too thick, and the positioning gets messed up when zooming in on the page) */
-    /* filter: */
-    /*     drop-shadow(0 0 5px rgb(var(--labelOutlineColor), 0.2)) */
-
-    /*     drop-shadow(-1px -1px  0px rgb(var(--labelOutlineColor), 0.3)) */
-    /*     drop-shadow( 0px -1px  0px rgb(var(--labelOutlineColor), 0.3)) */
-    /*     drop-shadow( 1px -1px  0px rgb(var(--labelOutlineColor), 0.3)) */
-    /*     drop-shadow( 1px  0px  0px rgb(var(--labelOutlineColor), 0.3)) */
-    /*     drop-shadow( 1px  1px  0px rgb(var(--labelOutlineColor), 0.3)) */
-    /*     drop-shadow( 0px  1px  0px rgb(var(--labelOutlineColor), 0.3)) */
-    /*     drop-shadow(-1px  1px  0px rgb(var(--labelOutlineColor), 0.3)) */
-    /*     drop-shadow(-1px  0px  0px rgb(var(--labelOutlineColor), 0.3)); */
 }
 .label:hover
 {
@@ -240,8 +222,6 @@ td.selected:hover
     right: 2px;
 
     font-size: 25px;
-    /* I don't know why I used to have this yellow, but if I decide to uncomment this again, the custom quantity label should also have this (which means I should apply this to .customLabel) */
-    /* color: yellow; */
 
     animation: fadeIn 0.2s forwards;
 }
@@ -251,25 +231,303 @@ td.selected:hover
     position: relative;
     top: 2px;
 
-    /* have to manually specify width and height due to weird github pages issue */
     width: 28px;
     height: 28px;
 }
 
 #screenshotRegion
 {
-    background-color: inherit; /* needed for the html-to-image library to have the right background (it seems to have CORS issues in reading my styl.css file) */
-    display: inline-block; /* makes the screenshotRegion wrap tightly around its children */
+    position: relative;
+    --screenshot-footer-space: 58px;
+    --screenshot-footer-bottom-gap: 12px;
+    --screenshot-price-bottom-gap: 36px;
+    background: var(--screenshot-background, #fff8b8);
+    border-radius: 8px;
+    box-sizing: border-box;
+    color: var(--screenshot-text-color, #000);
+    display: inline-block;
+    font-family: var(--screenshot-font-family, Georgia);
+    padding:
+        calc(var(--screenshot-padding-top, 10px) + 12px)
+        calc(var(--screenshot-padding-right, 10px) + 12px)
+        calc(var(--screenshot-padding-bottom, 10px) + var(--screenshot-footer-space))
+        calc(var(--screenshot-padding-left, 10px) + 12px);
 
     transform-origin: top left;
 }
 
-
-/* shouldn't be a class, since not all overlays should have this */
-/* #settingsOverlay, #failedCopyOverlay */
-/* Actually, maybe I should make some special class instead of doing it like this? */
-.overlay:not(#changelogOverlay)
+body:not(.tradeView) #screenshotRegion
 {
+    min-width: calc(700px + var(--screenshot-padding-left, 10px) + var(--screenshot-padding-right, 10px));
+    min-height: calc(190px + var(--screenshot-padding-top, 10px) + var(--screenshot-padding-bottom, 10px) + var(--screenshot-footer-space));
+}
+
+body.tradeView #screenshotRegion
+{
+    min-width: 760px;
+    border: 4px solid transparent;
+    background:
+        var(--screenshot-background, #fff8b8) padding-box,
+        linear-gradient(135deg, #ffcf5c, #ff789f, #9b72f2, #55c8ff) border-box;
+    text-align: center;
+}
+
+body.tradeView #tradeDisplay
+{
+    width: 100%;
+}
+
+body.tradeView button,
+body.tradeView input[type="text"]
+{
+    border-width: 1px;
+    border-radius: 6px;
+    border-color: #bcae68;
+    box-sizing: border-box;
+}
+
+body.tradeView button
+{
+    background-color: #fffdf0;
+    padding: 5px 10px;
+    box-shadow: 0 1px 0 rgb(0, 0, 0, 0.12);
+}
+
+body.tradeView button:hover:enabled
+{
+    background-color: #fff5c9;
+    border-color: #806f26;
+}
+
+body.tradeView input[type="text"]
+{
+    background-color: #fffef5;
+    padding: 4px 6px;
+}
+
+body.tradeView input[type="text"]:focus
+{
+    background-color: #fff9d9;
+    border-color: #806f26;
+    outline: none;
+}
+
+body.tradeView #tradeOfferNameInput,
+body.tradeView #tradeWantNameInput
+{
+    width: 14em !important;
+}
+
+#tradeItemEntryArea
+{
+    line-height: 2.1;
+}
+
+.tradeFormDivider
+{
+    display: inline-block;
+    margin: 0 10px;
+    font-weight: bold;
+}
+
+#tradeDisplay
+{
+    min-width: 340px;
+    text-align: center;
+    display: grid;
+    gap: 10px;
+    align-items: start;
+    justify-content: center;
+    animation: fadeIn 0.2s forwards;
+}
+
+#tradeDraftSummary[hidden]
+{
+    display: none;
+}
+
+#tradeDraftSummary:not([hidden])
+{
+    display: block;
+    width: fit-content;
+    max-width: min(90vw, 760px);
+    margin: 8px 0 2px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    background-color: #fffdf0;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tradeRowBlock
+{
+    position: relative;
+    border-width: var(--trade-border-width, 1px);
+    border-style: solid;
+    border-color: var(--trade-border-color, #fff);
+    border-radius: 7px;
+    background-color: transparent;
+    box-sizing: border-box;
+    padding: 18px 40px 18px 18px;
+    box-shadow: 0 2px 8px rgb(0, 0, 0, 0.08);
+    backdrop-filter: blur(2px);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.tradeRowBlock:hover
+{
+    box-shadow: 0 3px 10px rgb(0, 0, 0, 0.12);
+    cursor: pointer;
+}
+
+.tradeRowBlock.selected
+{
+    outline: 3px solid #fff;
+    outline-offset: 3px;
+    background-color: rgb(255, 255, 255, 0.08);
+}
+
+.tradeDeleteButton
+{
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 50%;
+}
+
+body.tradeView .tradeDeleteButton,
+body.tradeView .tradeDeleteButton:hover:enabled
+{
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+}
+
+body.tradeView .tradeDeleteButton:hover:enabled
+{
+    background-color: transparent;
+    color: #fff;
+}
+
+.tradeDeleteButton img
+{
+    display: block;
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    min-height: 18px;
+    flex: 0 0 18px;
+    object-fit: contain;
+}
+
+.tradeRow
+{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 0;
+}
+
+.tradeSide
+{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 520px;
+    box-sizing: border-box;
+}
+
+.tradeCard
+{
+    position: relative;
+    width: 88px;
+    height: 116px;
+    box-sizing: border-box;
+    padding: 4px 2px 3px;
+}
+
+.tradeCard img
+{
+    width: 74px;
+    height: 74px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 2px rgb(0, 0, 0, 0.45));
+}
+
+.tradeQuantityLabel
+{
+    top: 25px;
+    right: 4px;
+    font-size: 23px;
+}
+
+.tradeItemName
+{
+    display: flex;
+    min-height: 28px;
+    align-items: center;
+    justify-content: center;
+    margin: 3px 0 0;
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 1.05;
+}
+
+.tradeDirection
+{
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.tradeRatioBadge
+{
+    min-width: 82px;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: left;
+}
+
+.tradePlaceholder
+{
+    margin: 20px;
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--screenshot-text-color, #fff);
+    opacity: 0.62;
+}
+
+#normalItemsPlaceholder
+{
+    margin: 20px;
+    color: var(--screenshot-text-color, #fff);
+    font-size: 24px;
+    font-weight: bold;
+    opacity: 0.62;
+    text-align: center;
+}
+
+.overlay
+{
+    position: fixed;
+    inset: 0;
+    z-index: 50;
     text-align: center;
 }
 
@@ -289,7 +547,7 @@ td.selected:hover
     position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(-50.00005%, -50%); /* the ever-so-slight offset is done since the left side of the outline of the textboxes gets weird (maybe that's only for my computer at 100%, I don't know.) */
+    transform: translate(-50.00005%, -50%);
 
     min-width: 20%;
     max-width: 90%;
@@ -308,23 +566,21 @@ td.selected:hover
     margin: 10px;
 }
 
-/* technically, the name hideOverlayButton would better match how I named the id's, but I wanted to stay consistent with my naming of the css classes, as overlay is the more general/"parent" component */
 .overlayHideButton
 {
     position: sticky;
 
     top: 0;
-    /* only works properly when using left, not right */
+
     left: calc(100%);
 
     transform: translate(-50%, 50%);
 }
-/* Had to make a more specific rule than button:active in order to maintain the translate of the transform in addition to the scaling */
+
 .overlayHideButton:active
 {
     transform: translate(-50%, 50%) scale(0.98);
 }
-
 
 #abbreviationMappingTableArea
 {
@@ -333,16 +589,13 @@ td.selected:hover
     display: inline-block;
 }
 
-
-/* need to use not disabled instead of enabled because some items which get selected don't have an enabled/disabled state (i.e. normal cells); said items should still properly show as selected */
-.selected:not(:disabled), .invalid
+td.selected, .invalid
 {
     border-style: solid;
     border-color: red;
-    outline: none; /* prevents black outline of focused input, along with when shift is pressed when a button is "focused" */
+    outline: none;
 }
 
-/* the second entry makes every element inside totalSelectedPriceArea fade in (it also makes images inside the p tag not fade in each time they are loaded, but it does fade in with the p tag itself the first time which is what I want; the :not:empty is to make sure the equation fades in whenever it is populated, since it can be "visible" while still empty, causing it to otherwise instantly appear when populated) */
 .overlay, #totalSelectedPriceArea :not(img, :empty), #priceCalculationModeSelectionInfo
 {
     animation: fadeIn 0.3s forwards;
@@ -370,25 +623,25 @@ td.selected:hover
 .fuzzyMatchesHolder
 {
     position: absolute;
+    top: 100%;
     width: 100%;
-    z-index: 1;
+    z-index: 50;
 
     margin: 0;
     padding: 0;
 
-    /* fixes the gap issues */
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: auto;
+    min-width: 12em;
+    box-shadow: 0 8px 18px rgb(0, 0, 0, 0.35);
 }
 
-/* animates when the list of matches goes from empty -> non-empty */
 .fuzzyMatchesHolder:not(:empty)
 {
     animation: fadeIn 0.2s forwards;
 }
 
-/* due to how the display: flex works, this holder being empty still blocks input for a region of the screen (causing issues with phones that wrap the price input to the next line) */
 .fuzzyMatchesHolder:empty
 {
     display: none;
@@ -397,21 +650,21 @@ td.selected:hover
 .fuzzyMatchesHolder button
 {
     width: 100%;
-    height: 100%;
-    background-color: grey;
-    /* border-color: grey; */
+    height: auto;
+    background-color: #fffdf0;
+
     border-style: solid;
     border-width: 1px;
-    border-color: dimgrey;
-    color: white;
+    border-color: #bcae68;
+    color: black;
 
     margin: 0;
-    padding-left: 1em; /* prevent overlap with 1-9,0 number label */
+    padding-left: 1em;
 }
 
 .fuzzyMatchesHolder div
 {
-    position: relative; /* needed so that absolute position of p children works properly */
+    position: relative;
 }
 
 .fuzzyMatchesHolder p
@@ -427,14 +680,12 @@ td.selected:hover
     font-size: 10pt;
     font-weight: bold;
 
-    color: lime;
+    color: #1e7200;
 }
-
 
 .notification
 {
-    /* absolute and fixed do the same thing (makes the element not take up space in the "flow" of the document), except absolute uses position offsets relative to the parent, whereas fixed does not; fixed is relative to the initial viewport: https://developer.mozilla.org/en-US/docs/Web/CSS/position */
-    /*position; absolute;*/
+
     position: fixed;
     left: 50%;
     top: 0;
@@ -444,7 +695,7 @@ td.selected:hover
     border-radius: 5px;
     padding: 10px;
 
-    animation: slideFade 5s forwards; /* maintain end state: https://developer.mozilla.org/en-US/docs/Web/CSS/animation-fill-mode */
+    animation: slideFade 5s forwards;
 }
 
 .notificationSuccess
@@ -461,10 +712,10 @@ td.selected:hover
 
 @keyframes slideFade
 {
-    /* multiple keyframes can have the same settings, and keyframes don't have to be specified in order ( https://developer.mozilla.org/en-US/docs/Web/CSS/@keyframes ) */
+
     from, to
     {
-        /* need to be using opacity so that the entire element fades in/out */
+
         opacity: 0;
         transform: translate(-50%, -100%);
     }
@@ -475,8 +726,6 @@ td.selected:hover
     }
 }
 
-
-/* I could alternatively have a special class for whether this is actively loading or not (or just add/remove the .loading class), but I feel like the use of hidden better aligns with the rest of my code elsewhere */
 .loading:not([hidden])
 {
     display: inline-block;
@@ -496,7 +745,6 @@ td.selected:hover
     animation: spin 2.5s linear infinite;
 }
 
-/* TODO -- you can change animation timing functions throughout the keyframes: https://drafts.csswg.org/css-animations-1/#timing-functions */
 @keyframes spin
 {
     from
@@ -514,27 +762,136 @@ td.selected:hover
     }
 }
 
-/* Want this overlay to take up most of the screen horizontally (allowing the image to be more visible) */
 #failedCopyOverlay .overlayBox
 {
-    /* TODO -- since I made the max width/height for overlays 90%, should I change this to 90% as well? */
-    width: 80%;
+    width: min(760px, calc(100vw - 32px));
 }
 
-/* I want this to resize the overlay box to up to 80%, but I can't seem to get that to work without causing overflow horizontal scrollbar to show up; this seems to look fine anyway */
-/* TODO -- it would be nice to make this image scale to fit on screen without causing overflow in either direction, though that probably wouldn't work well for mobile anyway */
+#failedCopyOverlay .overlayInner
+{
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    padding: 0 16px 18px;
+}
+
+.failedCopyReasonList
+{
+    max-width: 620px;
+    margin: 0 auto;
+    padding-left: 24px;
+    text-align: left;
+}
+
 #failedCopyOverlayImageHolder
 {
+    display: block;
     max-width: 100%;
+    max-height: min(52vh, 520px);
+    margin: 0 auto;
+    object-fit: contain;
 }
 
-/* maintain reasonable width of contact overlay even on mobile */
 #contactOverlay .overlayInner
 {
     min-width: 12em;
 }
 
-#screenshotPriceHolder, .watermark
+#suggestionOverlay .overlayBox
+{
+    width: min(520px, calc(100vw - 28px));
+}
+
+#suggestionOverlay .overlayInner
+{
+    padding: 2px 16px 18px;
+    text-align: left;
+}
+
+#suggestionOverlay h2
+{
+    margin: 0 0 6px;
+    text-align: center;
+}
+
+.suggestionIntro
+{
+    margin: 0 0 16px;
+    color: var(--app-text-muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+#suggestionForm
+{
+    display: grid;
+    gap: 7px;
+}
+
+#suggestionForm label
+{
+    margin-top: 4px;
+    color: var(--app-text);
+    font-size: 13px;
+    font-weight: bold;
+}
+
+#suggestionForm input,
+#suggestionForm textarea,
+#suggestionForm select
+{
+    width: 100%;
+}
+
+#suggestionForm input[type="file"]
+{
+    border: 1px dashed #5c6b6e;
+    border-radius: 6px;
+    padding: 8px;
+    background: #111719;
+    color: var(--app-text-muted);
+}
+
+.suggestionIncognitoField
+{
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-weight: normal !important;
+}
+
+.suggestionIncognitoField input
+{
+    width: auto !important;
+}
+
+.suggestionFormActions
+{
+    display: flex;
+    min-height: 34px;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+#suggestionStatus
+{
+    color: var(--app-text-muted);
+    font-size: 13px;
+}
+
+#suggestionStatus.success
+{
+    color: #fff;
+}
+
+#suggestionStatus.error
+{
+    color: #ffb2b2;
+}
+
+#screenshotPriceHolder,
+.watermark
 {
     font-size: 16px;
     font-weight: bold;
@@ -545,14 +902,337 @@ td.selected:hover
 
 #screenshotPriceHolder
 {
-    float: left;
+    position: absolute;
+    bottom: calc(var(--screenshot-padding-bottom, 10px) + var(--screenshot-price-bottom-gap));
+    left: 12px;
+    margin: 0;
+    color: var(--screenshot-credit-color, #fff);
+    text-align: left;
+    text-shadow: 0 1px 2px var(--screenshot-credit-shadow, #000);
+}
 
-    animation: fadeIn 0.2s forwards;
+#screenshotPriceHolder:empty
+{
+    display: none;
+}
+
+#imageCredits
+{
+    display: contents;
+}
+
+#screenshotRegion.bottomTextHidden #imageCredits
+{
+    padding-top: 0;
 }
 
 .watermark
 {
+    color: var(--screenshot-credit-color, #fff);
+    text-shadow: 0 1px 2px var(--screenshot-credit-shadow, #000);
+}
+
+#leftWatermark
+{
+    position: absolute;
+    bottom: calc(var(--screenshot-padding-bottom, 10px) + var(--screenshot-footer-bottom-gap));
+    left: 12px;
+    margin: 0;
+    text-align: left;
+}
+
+#rightWatermark
+{
+    position: absolute;
+    bottom: calc(var(--screenshot-padding-bottom, 10px) + var(--screenshot-footer-bottom-gap));
+    right: 12px;
+    margin: 0;
     text-align: right;
+}
+
+#stylingDrawer[hidden]
+{
+    display: none;
+}
+
+#stylingDrawer
+{
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 10;
+    width: min(340px, calc(100vw - 32px));
+    height: 100vh;
+    box-sizing: border-box;
+    overflow-y: auto;
+    padding: 16px;
+    background-color: #fffdf0;
+    border-left: 1px solid #d8cc8a;
+    box-shadow: -4px 0 18px rgb(0, 0, 0, 0.16);
+}
+
+.stylingDrawerHeader
+{
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid #d8cc8a;
+    margin-bottom: 16px;
+    background-color: #fffdf0;
+}
+
+.stylingDrawerHeader h2
+{
+    margin: 0 0 12px;
+}
+
+.stylingDrawerCloseButton
+{
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0 0 12px;
+    border: 0;
+    background: transparent;
+    font-weight: bold;
+}
+
+.stylingDrawerContent
+{
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.stylingDrawerContent input[type="text"],
+.stylingDrawerContent select,
+.stylingDrawerContent textarea
+{
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.stylingDrawerContent textarea
+{
+    grid-column: 1 / -1;
+    width: 100%;
+    resize: vertical;
+}
+
+.stylingDrawerGroup
+{
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.stylingDrawerGroup[hidden]
+{
+    display: none;
+}
+
+.stylingPaletteField
+{
+    display: flex;
+    align-items: center;
+    grid-column: 1 / -1;
+    gap: 12px;
+}
+
+.stylingPaletteField[hidden]
+{
+    display: none;
+}
+
+.stylingHoneycombPalette
+{
+    position: relative;
+    width: 121px;
+    height: 38px;
+    margin: 2px 0;
+}
+
+.stylingHoneycombSwatch,
+body.tradeView .stylingHoneycombSwatch
+{
+    position: absolute;
+    width: 22px;
+    height: 19px;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    background: #8f8353;
+    clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+}
+
+.stylingHoneycombSwatch::before
+{
+    position: absolute;
+    inset: 1px;
+    background: var(--swatch-color);
+    clip-path: inherit;
+    content: "";
+}
+
+.stylingHoneycombSwatch:nth-child(1)
+{
+    left: 0;
+    top: 9.5px;
+}
+
+.stylingHoneycombSwatch:nth-child(2)
+{
+    left: 16.5px;
+    top: 0;
+}
+
+.stylingHoneycombSwatch:nth-child(3)
+{
+    left: 16.5px;
+    top: 19px;
+}
+
+.stylingHoneycombSwatch:nth-child(4)
+{
+    left: 33px;
+    top: 9.5px;
+}
+
+.stylingHoneycombSwatch:nth-child(5)
+{
+    left: 49.5px;
+    top: 0;
+}
+
+.stylingHoneycombSwatch:nth-child(6)
+{
+    left: 49.5px;
+    top: 19px;
+}
+
+.stylingHoneycombSwatch:nth-child(7)
+{
+    left: 66px;
+    top: 9.5px;
+}
+
+.stylingHoneycombSwatch:nth-child(8)
+{
+    left: 82.5px;
+    top: 0;
+}
+
+.stylingHoneycombSwatch:nth-child(9)
+{
+    left: 82.5px;
+    top: 19px;
+}
+
+.stylingHoneycombSwatch:nth-child(10)
+{
+    left: 99px;
+    top: 9.5px;
+}
+
+.stylingHoneycombSwatch:hover,
+body.tradeView .stylingHoneycombSwatch:hover:enabled
+{
+    background: #111;
+}
+
+.stylingHoneycombSwatch.selected,
+body.tradeView .stylingHoneycombSwatch.selected
+{
+    z-index: 1;
+    background: #111;
+}
+
+.stylingHoneycombSwatch.selected::after
+{
+    position: absolute;
+    inset: 0;
+    color: #fff;
+    content: "\2713";
+    font-size: 11px;
+    font-weight: bold;
+    line-height: 19px;
+    text-align: center;
+    text-shadow: 0 1px 2px #000;
+}
+
+.stylingDrawerSectionTitle
+{
+    grid-column: 1 / -1;
+    margin: 8px 0 0;
+    border-top: 1px solid #d8cc8a;
+    padding-top: 14px;
+}
+
+.stylingDrawerAdvancedContent
+{
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    border-top: 1px solid #d8cc8a;
+    padding-top: 12px;
+}
+
+.stylingDrawerAdvancedContent h2
+{
+    margin: 14px 0 8px;
+    font-size: 17px;
+}
+
+.stylingDrawerAdvancedContent hr
+{
+    margin: 16px 0;
+    border: 0;
+    border-top: 1px solid #e0d6a0;
+}
+
+.stylingDrawerAdvancedContent #abbreviationMappingTableArea
+{
+    overflow: auto;
+}
+
+.stylingRangeField
+{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stylingRangeField input[type="range"]
+{
+    width: 128px;
+}
+
+.stylingRangeField output
+{
+    min-width: 36px;
+    text-align: right;
+}
+
+.stylingSectionResetButton
+{
+    grid-column: 1 / -1;
+    justify-self: end;
+}
+
+body.tradeView .stylingDrawerCloseButton,
+body.tradeView .stylingDrawerCloseButton:hover:enabled
+{
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
 }
 
 #tryNewSiteButton
@@ -561,4 +1241,1022 @@ td.selected:hover
     color: white;
 
     box-shadow: 0px 0px 4px 2px #ff701f;
+}
+
+:root
+{
+    --app-bg: #111719;
+    --app-surface: #1a2326;
+    --app-surface-muted: #222d30;
+    --app-border: #344448;
+    --app-text: #edf4f3;
+    --app-text-muted: #a7b7b8;
+    --app-accent: #f5f7f7;
+    --app-accent-strong: #ffffff;
+    --app-header-height: 85px;
+    --app-panel-width: 360px;
+    --app-panel-collapsed-width: 48px;
+}
+
+html,
+body
+{
+    background: var(--app-bg);
+    color: var(--app-text);
+}
+
+[hidden]
+{
+    display: none !important;
+}
+
+body,
+body.tradeView
+{
+    min-height: 100vh;
+    margin: 0;
+    background: var(--app-bg);
+    color: var(--app-text);
+    font-family: Arial, sans-serif;
+}
+
+.appHeader
+{
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 11;
+    display: flex;
+    justify-content: center;
+    box-sizing: border-box;
+    min-height: var(--app-header-height);
+    border-bottom: 1px solid #3b4c50;
+    padding: 14px 20px;
+    background: #0c1214;
+    color: #fff;
+}
+
+.appBrand
+{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.appBrandIcon
+{
+    width: 56px;
+    height: 56px;
+    border-radius: 15px;
+    clip-path: inset(0 round 15px);
+    object-fit: cover;
+}
+
+.appBrand h1
+{
+    margin: 0;
+    font-size: 25px;
+    letter-spacing: 0;
+}
+
+.appBrand p
+{
+    margin: 4px 0 0;
+    color: #c5d0d1;
+    font-size: 13px;
+}
+
+.appHeaderCredit
+{
+    position: absolute;
+    top: 50%;
+    right: 22px;
+    margin: 0;
+    transform: translateY(-50%);
+    color: #f8fbfb;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 0;
+}
+
+.appShell
+{
+    min-height: calc(100vh - var(--app-header-height));
+    padding-top: var(--app-header-height);
+}
+
+.mainWorkspace
+{
+    display: flex;
+    width: calc(100% - var(--app-panel-width));
+    min-height: calc(100vh - var(--app-header-height));
+    min-width: 0;
+    box-sizing: border-box;
+    flex-direction: column;
+    margin-right: var(--app-panel-width);
+    padding: 20px clamp(14px, 3vw, 34px) 42px;
+    transition: margin-right 0.22s ease;
+}
+
+body.stylingDrawerCollapsed .mainWorkspace
+{
+    width: calc(100% - var(--app-panel-collapsed-width));
+    margin-right: var(--app-panel-collapsed-width);
+}
+
+.workspaceTopbar,
+.editorPanel,
+#totalSelectedPriceArea,
+.workspaceHint,
+.previewStage
+{
+    width: min(1120px, 100%);
+    box-sizing: border-box;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.workspaceTopbar
+{
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    margin-bottom: 14px;
+}
+
+.modeSwitch,
+.workspaceUtilities,
+.actionToolbar,
+.entryLine
+{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modeSwitch
+{
+    gap: 3px;
+    padding: 3px;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: #080d0f;
+    box-shadow: inset 0 1px 0 rgb(255, 255, 255, 0.05);
+}
+
+.modeSwitch button
+{
+    min-width: 86px;
+    border-color: transparent;
+    border-radius: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    color: #c6d0d1;
+    font-weight: bold;
+}
+
+.modeSwitch button:hover:enabled
+{
+    border-color: #5d6b6e;
+    background: #1c2629;
+    color: #fff;
+}
+
+.modeSwitch button.selected,
+.modeSwitch button.selected:hover:enabled
+{
+    border-color: #fff;
+    background: #fff;
+    color: #080b0c;
+    box-shadow: 0 2px 8px rgb(0, 0, 0, 0.24);
+}
+
+.workspaceUtilities
+{
+    position: absolute;
+    right: 0;
+}
+
+button,
+body.tradeView button,
+input[type="text"],
+body.tradeView input[type="text"],
+textarea,
+select
+{
+    box-sizing: border-box;
+    border: 1px solid #46585c;
+    border-radius: 6px;
+    background: #12191b;
+    color: var(--app-text);
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+}
+
+button,
+body.tradeView button,
+.buttonLink
+{
+    margin: 0;
+    padding: 7px 11px;
+    border: 1px solid #738084;
+    border-radius: 6px;
+    background: #111719;
+    color: #fff;
+    box-shadow: none;
+    font-size: 13px;
+    text-decoration: none;
+    transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+
+button + button
+{
+    margin-left: 0;
+}
+
+button:hover:enabled,
+body.tradeView button:hover:enabled,
+.buttonLink:hover
+{
+    border-color: #fff;
+    background: #fff;
+    color: #090d0e;
+}
+
+button.selected,
+button.selected:hover:enabled,
+body.tradeView button.selected,
+body.tradeView button.selected:hover:enabled
+{
+    border-color: var(--app-accent-strong);
+    background: linear-gradient(135deg, #ffffff, #dce2e2);
+    color: #080b0c;
+}
+
+button:disabled,
+body.tradeView button:disabled
+{
+    border-color: #39474a;
+    background: #20292b;
+    color: #7e8a8c;
+    opacity: 0.62;
+}
+
+input[type="text"],
+body.tradeView input[type="text"],
+textarea,
+select
+{
+    padding: 6px 8px;
+}
+
+input[type="text"]:focus,
+body.tradeView input[type="text"]:focus,
+textarea:focus,
+select:focus
+{
+    border-color: var(--app-accent);
+    outline: 2px solid rgb(255, 255, 255, 0.2);
+    background: #151e20;
+}
+
+input[type="range"],
+input[type="checkbox"],
+input[type="radio"]
+{
+    accent-color: #f5f7f7;
+}
+
+.editorPanel
+{
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    padding: 16px;
+    background: var(--app-surface);
+    box-shadow: 0 5px 18px rgb(0, 0, 0, 0.2);
+}
+
+.editorPanelHeader
+{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 12px;
+}
+
+#itemEditorHeading
+{
+    margin: 0;
+    font-size: 18px;
+}
+
+#normalItemEntryHint
+{
+    display: none;
+}
+
+.rowCountControl
+{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--app-text-muted);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.rowCountControl input[type="range"]
+{
+    width: 110px;
+}
+
+.entryLine,
+.actionToolbar
+{
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    white-space: nowrap;
+}
+
+.entryLine
+{
+    min-height: 41px;
+    overflow: visible;
+}
+
+.quantitySymbolButton,
+body.tradeView .quantitySymbolButton
+{
+    min-width: 30px;
+    padding: 5px 9px;
+    font-family: Georgia, serif;
+    font-size: 18px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.actionToolbar
+{
+    margin-top: 8px;
+}
+
+.stylingDrawerMobileToolbar
+{
+    display: none;
+}
+
+#tradeItemEntryArea
+{
+    align-items: stretch;
+    flex-direction: column;
+    line-height: normal;
+}
+
+.tradeInputLine,
+.tradeActionLine,
+.tradeSelectionToolbar
+{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 4px;
+    white-space: nowrap;
+}
+
+.tradeInputLine
+{
+    flex-wrap: wrap;
+    overflow: visible;
+}
+
+.tradeActionLine
+{
+    overflow-x: auto;
+}
+
+.tradeActionLine
+{
+    flex-wrap: wrap;
+}
+
+.tradeSelectionToolbar
+{
+    flex-wrap: wrap;
+    overflow-x: auto;
+}
+
+.priceCalculationToolbars
+{
+    width: 100%;
+}
+
+.priceCalculationToolbars .actionToolbar
+{
+    min-height: 34px;
+}
+
+button svg,
+.stylingDrawerCloseButton svg,
+.buttonLink svg
+{
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    stroke-width: 2;
+}
+
+button:has(svg),
+.buttonLink:has(svg)
+{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#tradeDraftSummary:not([hidden])
+{
+    flex: 0 0 auto;
+    margin: 0 0 0 4px;
+    background: var(--app-surface-muted);
+}
+
+.workspaceHint
+{
+    display: block;
+    margin-top: 12px;
+    color: var(--app-text-muted);
+    text-align: center;
+}
+
+.previewStage
+{
+    display: flex;
+    width: 100%;
+    min-height: 160px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    overflow-x: auto;
+    padding: 16px 0;
+}
+
+.previewCanvas
+{
+    position: relative;
+    flex: 0 0 auto;
+    overflow: visible;
+}
+
+#screenshotRegion
+{
+    flex: 0 0 auto;
+    transform-origin: top left;
+}
+
+.previewCanvas > #screenshotRegion
+{
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#screenshotRegion.emptyPreview
+{
+    display: flex;
+    width: 760px;
+    min-height: calc(190px + var(--screenshot-padding-top, 10px) + var(--screenshot-padding-bottom, 10px) + var(--screenshot-footer-space));
+    box-sizing: border-box;
+    flex-direction: column;
+    justify-content: center;
+    padding:
+        calc(var(--screenshot-padding-top, 10px) + 12px)
+        calc(var(--screenshot-padding-right, 10px) + 12px)
+        calc(var(--screenshot-padding-bottom, 10px) + var(--screenshot-footer-space))
+        calc(var(--screenshot-padding-left, 10px) + 12px);
+    text-align: center;
+}
+
+#stylingDrawer
+{
+    position: fixed;
+    top: var(--app-header-height);
+    right: 0;
+    z-index: 10;
+    width: var(--app-panel-width);
+    height: calc(100vh - var(--app-header-height));
+    box-sizing: border-box;
+    overflow-y: auto;
+    border: 0;
+    border-left: 1px solid var(--app-border);
+    padding: 14px;
+    background: #151d1f;
+    box-shadow: -5px 0 18px rgb(0, 0, 0, 0.24);
+    transition: width 0.22s ease;
+}
+
+#stylingDrawer.collapsed
+{
+    width: var(--app-panel-collapsed-width);
+    overflow: hidden;
+    padding: 10px 8px;
+}
+
+#stylingDrawer.collapsed .stylingDrawerContent,
+#stylingDrawer.collapsed .stylingDrawerHeader h2
+{
+    display: none;
+}
+
+.stylingDrawerHeader
+{
+    top: -14px;
+    gap: 9px;
+    justify-content: flex-start;
+    margin: 0 -2px 14px;
+    border-color: var(--app-border);
+    padding: 12px 2px 10px;
+    background: #151d1f;
+}
+
+.stylingDrawerHeader h2
+{
+    margin: 0;
+    font-size: 20px;
+}
+
+.stylingDrawerCloseButton,
+body.tradeView .stylingDrawerCloseButton,
+body.tradeView .stylingDrawerCloseButton:hover:enabled
+{
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    margin: 0;
+    border: 1px solid var(--app-border);
+    border-radius: 5px;
+    padding: 0;
+    background: #111719;
+    color: var(--app-text);
+    line-height: 26px;
+}
+
+.stylingDrawerCloseButton:has(svg)
+{
+    justify-content: center;
+}
+
+.stylingDrawerContent
+{
+    display: flex;
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 11px;
+    font-size: 13px;
+}
+
+.stylingSection
+{
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: #101719;
+}
+
+.stylingSection[open]
+{
+    background: #111a1d;
+}
+
+.stylingSection summary
+{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 11px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    list-style: none;
+    text-align: left;
+}
+
+.stylingSection summary::-webkit-details-marker
+{
+    display: none;
+}
+
+.stylingSection summary::after
+{
+    content: "\203A";
+    font-size: 18px;
+    line-height: 1;
+    transition: transform 0.16s ease;
+}
+
+.stylingSection[open] summary::after
+{
+    transform: rotate(90deg);
+}
+
+.stylingSectionGrid
+{
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 11px;
+    border-top: 1px solid var(--app-border);
+    padding: 11px;
+}
+
+.stylingSectionGrid textarea,
+.stylingInlineOptions
+{
+    grid-column: 1 / -1;
+}
+
+.stylingInputAnchor
+{
+    position: relative;
+}
+
+.stylingInputAnchor input
+{
+    width: 12em;
+}
+
+.stylingInlineOptions
+{
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 4px;
+}
+
+.stylingInlineOptions input[type="checkbox"]
+{
+    justify-self: center;
+}
+
+.stylingInlineOptions label
+{
+    line-height: 1.12;
+}
+
+.stylingDrawerSectionTitle
+{
+    border-color: var(--app-border);
+}
+
+.stylingDrawerAdvancedContent,
+.stylingDrawerAdvancedContent hr
+{
+    border-color: var(--app-border);
+}
+
+.stylingDrawerAdvancedContent
+{
+    padding: 14px;
+}
+
+.stylingItemListControls
+{
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+}
+
+.stylingItemListControls select,
+.stylingItemListControls input[type="text"]
+{
+    width: 100%;
+}
+
+.stylingStackedChecks
+{
+    display: grid;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.stylingStackedChecks label
+{
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+#stylingDrawer input[type="text"],
+#stylingDrawer select,
+#stylingDrawer textarea
+{
+    border-color: #46585c;
+}
+
+.fuzzyMatchesHolder,
+.overlayBox,
+.overlayInner
+{
+    border-color: var(--app-border);
+    background: var(--app-surface);
+    color: var(--app-text);
+}
+
+.fuzzyMatchesHolder button
+{
+    background: var(--app-surface);
+    color: var(--app-text);
+}
+
+.overlayBackground
+{
+    background: rgb(0, 0, 0, 0.72);
+}
+
+#stylingDrawerOpenButton
+{
+    display: none;
+}
+
+body.tradeView #tradeOfferNameInput,
+body.tradeView #tradeWantNameInput
+{
+    width: 14em !important;
+}
+
+.tradeRowBlock
+{
+    backdrop-filter: blur(3px);
+}
+
+body:not(.tradeView) .tradeOnlyStyling,
+body.tradeView .normalOnlyStyling
+{
+    display: none !important;
+}
+
+#screenshotRegion .itemCell
+{
+    width: 125px;
+    height: 125px;
+    box-sizing: border-box;
+    border-color: color-mix(in srgb, var(--screenshot-text-color, #000) 22%, transparent);
+    padding: 8px;
+    text-align: center;
+}
+
+#screenshotRegion .itemCell.selected
+{
+    border-width: 2px;
+    border-color: #ff4d4f;
+    background: color-mix(in srgb, #ff4d4f 10%, transparent);
+    box-shadow: none;
+}
+
+#screenshotRegion .itemImage
+{
+    display: block;
+    width: 104px;
+    height: 104px;
+    margin: 2px auto;
+}
+
+#screenshotRegion.copyExport
+{
+    padding-top: 0;
+    padding-right: 0;
+    padding-left: 0;
+}
+
+body:not(.tradeView) #screenshotRegion.copyExport
+{
+    min-width: 760px;
+    min-height: calc(190px + var(--screenshot-padding-bottom, 10px) + var(--screenshot-footer-space));
+}
+
+#screenshotRegion.copyExport *
+{
+    animation: none !important;
+    transition: none !important;
+}
+
+#screenshotRegion .quantityLabel
+{
+    top: auto;
+    right: 8px;
+    bottom: 5px;
+    margin: 0;
+    font-size: var(--normal-item-quantity-size, 34px);
+}
+
+#screenshotRegion .priceLabel
+{
+    top: 4px;
+    left: 4px;
+    margin: 0;
+    transform: none;
+    font-size: var(--normal-item-price-size, 22px);
+}
+
+#screenshotRegion .customQuantityLabel
+{
+    top: auto;
+    bottom: 5px;
+    left: 5px;
+    margin: 0;
+    font-size: calc(var(--normal-item-quantity-size, 34px) * 0.62);
+}
+
+#screenshotRegion .customPriceLabel
+{
+    top: 4px;
+    right: 4px;
+    margin: 0;
+    transform: none;
+    font-size: calc(var(--normal-item-price-size, 22px) * 0.78);
+}
+
+#screenshotRegion.hideGeneratedItemQuantities .quantityLabel,
+#screenshotRegion.hideGeneratedItemQuantities .customQuantityLabel,
+#screenshotRegion.hideGeneratedItemPrices .priceLabel,
+#screenshotRegion.hideGeneratedItemPrices .customPriceLabel
+{
+    display: none;
+}
+
+.copyImageStatus
+{
+    min-width: 104px;
+    color: var(--app-text-muted);
+    font-size: 13px;
+}
+
+.copyImageStatus.copying
+{
+    color: #d8e2e2;
+}
+
+.copyImageStatus.success
+{
+    width: fit-content;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #111;
+}
+
+.copyImageStatus.error
+{
+    color: #ffb2b2;
+}
+
+.loading:not([hidden])
+{
+    border-color: #fff #fff #fff transparent;
+}
+
+@keyframes spin
+{
+    from
+    {
+        transform: rotate(0deg);
+    }
+    50%
+    {
+        transform: rotate(360deg) scale(0.8);
+        border-color: #b8c4c5 #b8c4c5 #b8c4c5 transparent;
+    }
+    to
+    {
+        transform: rotate(720deg);
+    }
+}
+
+@media (max-width: 900px)
+{
+    .workspaceTopbar
+    {
+        justify-content: space-between;
+    }
+
+    .workspaceUtilities
+    {
+        position: static;
+    }
+}
+
+@media (max-width: 760px)
+{
+    :root
+    {
+        --app-header-height: 66px;
+    }
+
+    .appHeader
+    {
+        justify-content: flex-start;
+        padding: 10px 14px;
+    }
+
+    .appBrand
+    {
+        gap: 9px;
+    }
+
+    .appBrandIcon
+    {
+        width: 45px;
+        height: 45px;
+        border-radius: 12px;
+        clip-path: inset(0 round 12px);
+    }
+
+    .appBrand h1
+    {
+        font-size: 19px;
+    }
+
+    .appBrand p
+    {
+        display: none;
+    }
+
+    .appHeaderCredit
+    {
+        right: 12px;
+        max-width: 96px;
+        font-size: 11px;
+        text-align: right;
+    }
+
+    .mainWorkspace,
+    body.stylingDrawerCollapsed .mainWorkspace
+    {
+        width: 100%;
+        margin-right: 0;
+        padding: 14px 10px 28px;
+    }
+
+    .workspaceTopbar
+    {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .modeSwitch,
+    .workspaceUtilities
+    {
+        justify-content: center;
+    }
+
+    .editorPanel
+    {
+        padding: 12px;
+    }
+
+    .editorPanelHeader
+    {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 9px;
+    }
+
+    #stylingDrawer
+    {
+        top: var(--app-header-height);
+        height: calc(100vh - var(--app-header-height));
+        width: min(360px, calc(100vw - 20px));
+        box-shadow: -8px 0 22px rgb(0, 0, 0, 0.2);
+    }
+
+    #stylingDrawer.collapsed
+    {
+        width: min(360px, calc(100vw - 20px));
+    }
+
+    #stylingDrawerOpenButton
+    {
+        display: inline-block;
+    }
+
+    .stylingDrawerMobileToolbar
+    {
+        display: flex;
+    }
+
+    .previewStage
+    {
+        justify-content: flex-start;
+    }
+
 }

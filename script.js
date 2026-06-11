@@ -1,5 +1,3 @@
-
-/* -------- scripts/Utility.js -------- */
 function convertToTitleSnakeCase(phrase)
 {
     if(!phrase.length)
@@ -14,57 +12,67 @@ function convertToTitleSnakeCase(phrase)
     return titleCaseWords.join("_");
 }
 
-// gotten from https://stackoverflow.com/questions/9038625/detect-if-device-is-ios
 const iOSPlatformList = new Set(["iPad Simulator", "iPhone Simulator", "iPod Simulator", "iPad", "iPhone", "iPod"]);
 function isRunningIOS()
 {
     return iOSPlatformList.has(navigator.platform) ||
-        // iPad on iOS 13 detection
+
         (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 }
 
 function getLocaleString(num)
 {
-    // since this is an internal function with an optional parameter, I am worried that this might cause weird behavior, as in toLocaleString(undefined) behaving differently from toLocaleString()
-    // return num.toLocaleString(shouldIgnoreLocale ? "en-US" : undefined);
 
     return shouldIgnoreLocale ? num.toLocaleString("en-US") : num.toLocaleString();
 }
 
-
-/* -------- scripts/Globals.js -------- */
 let itemsPerRow = 8;
+let tradeRowsPerRow = 4;
 let textListSeparatorSelectedRadio = 0;
 
-let itemsPerRowSlider, itemsPerRowLabel, itemNameInput, itemQuantityInput, itemPriceOrMultiplierInput, itemTable;
-let bottomText, screenshotRegion, screenshotPriceHolder;
-let settingsOverlay, importFileInput, itemListDropdown, deleteItemListButton, createItemListInput, createItemListButton, includeSettingsInItemListCheckBox, copyCurrentItemsFromItemListCheckBox, abbreviationMappingTable, bottomTextSettingInput, textListSeparatorRadios, textListCustomSeparatorInput, textListSeparatorCustomRadio, textListFormatInput, priceCalculationItemInput, showPriceInScreenshotCheckBox, showTotalInNormalModeCheckBox, hidePriceOrMultiplierCheckBox, defaultQuantityInput, defaultPriceOrMultiplierInput, refocusNameOnSubmitCheckBox, focusQuantityOnAutocompleteCheckBox, ignoreLocaleCheckBox/*, reduceAnimationsCheckBox*/;
+let itemsPerRowSlider, itemsPerRowLabel, itemsPerRowOptionLabel, itemNameInput, itemQuantityInput, itemInfinityQuantityButton, itemPriceOrMultiplierInput, itemTable, normalItemsPlaceholder;
+let normalViewButton, tradeViewButton, itemEditorModeTitle, normalItemEntryHint, normalItemEntryArea, tradeItemEntryArea, normalItemClickInfo, hideInTradeViewElems;
+let tradeOfferNameInput, tradeOfferQuantityInput, tradeWantNameInput, tradeWantQuantityInput, tradeOfferFuzzyMatchesHolder, tradeWantFuzzyMatchesHolder, tradeDisplay;
+let tradeDraftSummary, tradeCancelEditButton;
+let tradeSelectionModeStateSpan, tradeUnselectedVisibilityStateSpan, disableOutsideTradeSelectionModeElems;
+let bottomText, screenshotRegion, screenshotPriceHolder, leftWatermark;
+let stylingDrawer, stylingDrawerOpenButton, stylingDrawerCloseButton, advancedSettingsDrawerContent;
+let generatedImageBackgroundModeInput, generatedImagePresetInput, generatedImagePresetLabel, generatedImageSolidPaletteField, generatedImageBackgroundColorInput, generatedImageGradientColorInput, generatedImageGradientAngleInput, generatedImageGradientAngleLabel, generatedImageBorderColorInput, generatedImageBorderThicknessInput, generatedImageBorderThicknessOutput, generatedImageTextColorInput, generatedImageFontInput, generatedImageBottomTextInput, generatedImageShowBottomTextInput, generatedImageCreditInput, generatedImageGradientFields;
+let generatedImagePaddingTopInput, generatedImagePaddingRightInput, generatedImagePaddingBottomInput, generatedImagePaddingLeftInput, generatedImagePaddingTopOutput, generatedImagePaddingRightOutput, generatedImagePaddingBottomOutput, generatedImagePaddingLeftOutput, generatedImagePaddingResetButton;
+let generatedImageShowItemQuantityInput, generatedImageEnableInfinityInput, generatedImageItemQuantitySizeInput, generatedImageItemQuantitySizeOutput, generatedImageShowItemPriceInput, generatedImageItemPriceSizeInput, generatedImageItemPriceSizeOutput;
+let suggestionOverlayShowButton, suggestionForm, suggestionSubmitButton, suggestionLoadingWheel, suggestionStatus, suggestionDiscordInput, suggestionIncognitoInput, importFileInput, itemListDropdown, deleteItemListButton, createItemListInput, createItemListButton, includeSettingsInItemListCheckBox, copyCurrentItemsFromItemListCheckBox, abbreviationMappingTable, textListSeparatorRadios, textListCustomSeparatorInput, textListSeparatorCustomRadio, textListFormatInput, priceCalculationItemInput, defaultQuantityInput, defaultPriceOrMultiplierInput, refocusNameOnSubmitCheckBox, focusQuantityOnAutocompleteCheckBox, ignoreLocaleCheckBox ;
 let priceCalculationModeStateSpan;
 let disableInPriceCalculationModeElems, disableOutsidePriceCalculationModeElems;
 let equationVisibilityStateSpan, unselectedItemsVisibilityStateSpan;
+let isPriceCalculationModeEnabled = false;
 let shouldHideUnselectedItems = false;
-let totalSelectedPriceArea, totalSelectedPriceHolder, totalSelectedPriceMessageHolder, totalSelectedPriceEquationHolder;
+let isTradeSelectionModeEnabled = false, shouldHideUnselectedTrades = false;
+let totalSelectedPriceArea, totalSelectedPriceMessageHolder, totalSelectedPriceEquationHolder;
 let coinImageUrl;
 let priceCalculationItem;
 let priceCalculationModeSelectionInfo;
-let changelogOverlay, failedCopyOverlay, contactOverlay;
-let copyImageLoadingWheel;
+let failedCopyOverlay, contactOverlay, suggestionOverlay;
+let copyImageLoadingWheel, copyImageStatus;
 let activeItemList;
 let shouldIncludeSettingsInItemList, shouldCopyCurrentItemsFromItemList;
-let shouldShowTotalInNormalMode; // FIXME -- I'm starting to think more and more that this shouldn't be a variable, since the state is already completely coupled with the checkbox; adding this variable just prevents a get...() call that queries the checkbox with jquery to check if it's checked
-let shouldHidePriceOrMultiplier;
 let defaultQuantity, defaultPriceOrMultiplier;
 let shouldRefocusNameOnSubmit, shouldFocusQuantityOnAutocomplete, shouldIgnoreLocale;
 
 let itemNameFuzzyMatchesHolder, priceCalculationItemFuzzyMatchesHolder;
 
-
 let preparedItemNames;
 
-
 let items = new Map();
+let tradeRows = [];
+let tradeDraftOfferItems = [], tradeDraftWantItems = [];
+let tradeDraftPendingPromises = [];
+let tradeDraftOrder = 0;
+let editingTradeRowIndex = undefined;
+let tradeOfferInputItemCache, tradeWantInputItemCache;
 
 let itemLists = new Map();
+let buySellItemLists = new Map(), tradeItemLists = new Map();
+let buySellActiveItemList = "Default", tradeActiveItemList = "Default";
 
 let abbreviationMapping = new Map([
     ["tnt", "tnt barrel"],
@@ -81,15 +89,30 @@ let abbreviationMapping = new Map([
     ["sbar", "silver bar"],
     ["pbar", "platinum bar"],
     ["rcoal", "refined coal"],
-    ["gcheese", "goat cheese"]
+    ["gcheese", "goat cheese"],
+    ["wax", "beeswax"],
+    ["lobster", "lobster tail"],
+    ["lobsters", "lobster tail"],
+    ["feather", "duck feather"],
+    ["feathers", "duck feather"],
+    ["bem", "BEM Set"],
+    ["bems", "BEM Set"],
+    ["bemset", "BEM Set"],
+    ["sem", "SEM Set"],
+    ["sems", "SEM Set"],
+    ["semset", "SEM Set"],
+    ["tem", "TEM Set"],
+    ["tems", "TEM Set"],
+    ["temset", "TEM Set"],
+    ["lem", "LEM Set"],
+    ["lems", "LEM Set"],
+    ["lemset", "LEM Set"]
 ]);
 let isActivelyCopyingImage = false;
 
-
-/* -------- scripts/Init.js -------- */
 $(document).ready(() =>
 {
-    // Since there are risks that people will lose their item listings and/or settings with update v3.0, I am creating this backup at the very start as a countermeasure for the worst-case scenario (in which case I can roll back the update).
+
     if(localStorage.getItem("v2.14_backup") === null)
         localStorage.setItem("v2.14_backup", JSON.stringify(localStorage));
 
@@ -97,16 +120,86 @@ $(document).ready(() =>
 
     itemsPerRowSlider = $("#itemsPerRowSlider");
     itemsPerRowLabel = $("#itemsPerRowLabel");
+    itemsPerRowOptionLabel = $("#itemsPerRowOptionLabel");
     itemNameInput = $("#itemNameInput");
     itemQuantityInput = $("#itemQuantityInput");
+    itemInfinityQuantityButton = $("#itemInfinityQuantityButton");
     itemPriceOrMultiplierInput = $("#itemPriceOrMultiplierInput");
     itemTable = $("#itemTable");
+    normalItemsPlaceholder = $("#normalItemsPlaceholder");
+
+    normalViewButton = $("#normalViewButton");
+    tradeViewButton = $("#tradeViewButton");
+    itemEditorModeTitle = $("#itemEditorModeTitle");
+    normalItemEntryHint = $("#normalItemEntryHint");
+    normalItemEntryArea = $("#normalItemEntryArea");
+    tradeItemEntryArea = $("#tradeItemEntryArea");
+    normalItemClickInfo = $("#normalItemClickInfo");
+    hideInTradeViewElems = $(".hideInTradeView");
+    tradeOfferNameInput = $("#tradeOfferNameInput");
+    tradeOfferQuantityInput = $("#tradeOfferQuantityInput");
+    tradeWantNameInput = $("#tradeWantNameInput");
+    tradeWantQuantityInput = $("#tradeWantQuantityInput");
+    tradeOfferFuzzyMatchesHolder = $("#tradeOfferFuzzyMatchesHolder");
+    tradeWantFuzzyMatchesHolder = $("#tradeWantFuzzyMatchesHolder");
+    tradeDisplay = $("#tradeDisplay");
+    tradeDraftSummary = $("#tradeDraftSummary");
+    tradeCancelEditButton = $("#tradeCancelEditButton");
+    tradeSelectionModeStateSpan = $("#tradeSelectionModeStateSpan");
+    tradeUnselectedVisibilityStateSpan = $("#tradeUnselectedVisibilityStateSpan");
+    disableOutsideTradeSelectionModeElems = $(".disableOutsideTradeSelectionMode");
 
     bottomText = $("#bottomText");
     screenshotRegion = $("#screenshotRegion");
     screenshotPriceHolder = $("#screenshotPriceHolder");
+    leftWatermark = $("#leftWatermark");
+    stylingDrawer = $("#stylingDrawer");
+    stylingDrawerOpenButton = $("#stylingDrawerOpenButton");
+    stylingDrawerCloseButton = $("#stylingDrawerCloseButton");
+    advancedSettingsDrawerContent = $("#advancedSettingsDrawerContent");
+    generatedImageBackgroundModeInput = $("#generatedImageBackgroundModeInput");
+    generatedImagePresetInput = $("#generatedImagePresetInput");
+    generatedImagePresetLabel = $("#generatedImagePresetLabel");
+    generatedImageSolidPaletteField = $("#generatedImageSolidPaletteField");
+    generatedImageBackgroundColorInput = $("#generatedImageBackgroundColorInput");
+    generatedImageGradientColorInput = $("#generatedImageGradientColorInput");
+    generatedImageGradientAngleInput = $("#generatedImageGradientAngleInput");
+    generatedImageGradientAngleLabel = $("#generatedImageGradientAngleLabel");
+    generatedImageBorderColorInput = $("#generatedImageBorderColorInput");
+    generatedImageBorderThicknessInput = $("#generatedImageBorderThicknessInput");
+    generatedImageBorderThicknessOutput = $("#generatedImageBorderThicknessOutput");
+    generatedImageTextColorInput = $("#generatedImageTextColorInput");
+    generatedImageFontInput = $("#generatedImageFontInput");
+    generatedImageBottomTextInput = $("#generatedImageBottomTextInput");
+    generatedImageShowBottomTextInput = $("#generatedImageShowBottomTextInput");
+    generatedImageCreditInput = $("#generatedImageCreditInput");
+    generatedImageGradientFields = $("#generatedImageGradientFields");
+    generatedImagePaddingTopInput = $("#generatedImagePaddingTopInput");
+    generatedImagePaddingRightInput = $("#generatedImagePaddingRightInput");
+    generatedImagePaddingBottomInput = $("#generatedImagePaddingBottomInput");
+    generatedImagePaddingLeftInput = $("#generatedImagePaddingLeftInput");
+    generatedImagePaddingTopOutput = $("#generatedImagePaddingTopOutput");
+    generatedImagePaddingRightOutput = $("#generatedImagePaddingRightOutput");
+    generatedImagePaddingBottomOutput = $("#generatedImagePaddingBottomOutput");
+    generatedImagePaddingLeftOutput = $("#generatedImagePaddingLeftOutput");
+    generatedImagePaddingResetButton = $("#generatedImagePaddingResetButton");
+    generatedImageShowItemQuantityInput = $("#generatedImageShowItemQuantityInput");
+    generatedImageEnableInfinityInput = $("#generatedImageEnableInfinityInput");
+    generatedImageItemQuantitySizeInput = $("#generatedImageItemQuantitySizeInput");
+    generatedImageItemQuantitySizeOutput = $("#generatedImageItemQuantitySizeOutput");
+    generatedImageShowItemPriceInput = $("#generatedImageShowItemPriceInput");
+    generatedImageItemPriceSizeInput = $("#generatedImageItemPriceSizeInput");
+    generatedImageItemPriceSizeOutput = $("#generatedImageItemPriceSizeOutput");
 
-    settingsOverlay = new Overlay("settingsOverlay", "showButton");
+    suggestionOverlayShowButton = $("#suggestionOverlayShowButton");
+    suggestionForm = $("#suggestionForm");
+    suggestionSubmitButton = $("#suggestionSubmitButton");
+    suggestionLoadingWheel = $("#suggestionLoadingWheel");
+    suggestionStatus = $("#suggestionStatus");
+    suggestionDiscordInput = $("#suggestionDiscordInput");
+    suggestionIncognitoInput = $("#suggestionIncognitoInput");
+    advancedSettingsDrawerContent.append($("#advancedSettingsDrawerTemplate").contents());
+    $("#advancedSettingsDrawerTemplate").remove();
 
     importFileInput = $("#importFileInput");
     itemListDropdown = $("#itemListDropdown");
@@ -116,22 +209,16 @@ $(document).ready(() =>
     includeSettingsInItemListCheckBox = $("#includeSettingsInItemListCheckBox");
     copyCurrentItemsFromItemListCheckBox = $("#copyCurrentItemsFromItemListCheckBox");
     abbreviationMappingTable = $("#abbreviationMappingTable");
-    bottomTextSettingInput = $("#bottomTextSettingInput");
     textListSeparatorRadios = $("input[name='textListSeparatorGroup']");
     textListCustomSeparatorInput = $("#textListCustomSeparatorInput");
     textListSeparatorCustomRadio = $("#textListSeparatorCustomRadio");
     textListFormatInput = $("#textListFormatInput");
     priceCalculationItemInput = $("#priceCalculationItemInput");
-    showPriceInScreenshotCheckBox = $("#showPriceInScreenshotCheckBox");
-    showTotalInNormalModeCheckBox = $("#showTotalInNormalModeCheckBox");
-    hidePriceOrMultiplierCheckBox = $("#hidePriceOrMultiplierCheckBox");
     defaultQuantityInput = $("#defaultQuantityInput");
     defaultPriceOrMultiplierInput = $("#defaultPriceOrMultiplierInput");
     refocusNameOnSubmitCheckBox = $("#refocusNameOnSubmitCheckBox");
     focusQuantityOnAutocompleteCheckBox = $("#focusQuantityOnAutocompleteCheckBox");
     ignoreLocaleCheckBox = $("#ignoreLocaleCheckBox");
-    // reduceAnimationsCheckBox = $("#reduceAnimationsCheckBox");
-
 
     priceCalculationModeStateSpan = $("#priceCalculationModeStateSpan");
 
@@ -142,33 +229,45 @@ $(document).ready(() =>
     unselectedItemsVisibilityStateSpan = $("#unselectedItemsVisibilityStateSpan");
 
     totalSelectedPriceArea = $("#totalSelectedPriceArea");
-    totalSelectedPriceHolder = $("#totalSelectedPriceHolder");
     totalSelectedPriceMessageHolder = $("#totalSelectedPriceMessageHolder");
     totalSelectedPriceEquationHolder = $("#totalSelectedPriceEquationHolder");
 
     priceCalculationModeSelectionInfo = $("#priceCalculationModeSelectionInfo");
 
-    changelogOverlay = new Overlay("changelogOverlay", "showButton");
-
     failedCopyOverlay = new Overlay("failedCopyOverlay", "imageHolder");
 
-    /* TODO -- should this be called contactUsOverlay instead? */
     contactOverlay = new Overlay("contactOverlay", "showButton");
+    suggestionOverlay = new Overlay("suggestionOverlay");
 
-    copyImageLoadingWheel = $("#copyImageLoadingWheel");
+    copyImageLoadingWheel = $(".copyImageLoadingWheel");
+    copyImageStatus = $(".copyImageStatus");
 
     itemNameFuzzyMatchesHolder = $("#itemNameFuzzyMatchesHolder");
     priceCalculationItemFuzzyMatchesHolder = $("#priceCalculationItemFuzzyMatchesHolder");
 
+    setUpStylingDrawer();
+
+    tradeViewButton.on("click", () =>
+    {
+        setTradeViewEnabled(true);
+    });
+    normalViewButton.on("click", () => setTradeViewEnabled(false));
+
     itemsPerRowSlider.on("input", (event) =>
     {
-        itemsPerRow = parseInt(event.target.value); // must convert to integer/number (since I do + calculations with it and don't want it to concat like a string)
-        itemsPerRowLabel.text(itemsPerRow);
-        updateItemLayout();
-
-        rescaleScreenshotRegion();
+        if(getIsInTradeView())
+        {
+            tradeRowsPerRow = parseInt(event.target.value);
+            itemsPerRowLabel.text(tradeRowsPerRow);
+            updateTradeDisplay();
+        }
+        else
+        {
+            itemsPerRow = parseInt(event.target.value);
+            itemsPerRowLabel.text(itemsPerRow);
+            updateItemLayout();
+        }
     });
-
 
     itemNameInput.on("focus", () =>
     {
@@ -181,7 +280,7 @@ $(document).ready(() =>
 
     itemNameInput.on("keydown", (e) =>
     {
-        // should use key to get the value representation of the input, allowing numpad numbers to show up like normal numbers ( https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key and https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code )
+
         if(e.key.length !== 1 || e.key < '0' || e.key > '9')
             return;
         let selection = e.key - '0';
@@ -193,88 +292,174 @@ $(document).ready(() =>
             return;
 
         buttons.eq(selection - 1).trigger("mousedown", {usedKeyboard: true});
-        event.preventDefault();
+        e.preventDefault();
     });
     itemNameInput.on("keyup", (e) =>
     {
         handleAddingItem(e);
 
-        // this should be done AFTER handling adding the item, since we want this to show no results if enter was pressed and the name input got wiped
         updateFuzzyMatches(itemNameInput, itemNameFuzzyMatchesHolder);
     });
     itemQuantityInput.on("keyup", handleAddingItem);
     itemPriceOrMultiplierInput.on("keyup", handleAddingItem);
+    itemInfinityQuantityButton.on("click", () =>
+    {
+        itemQuantityInput.val(INFINITY_QUANTITY);
+        itemQuantityInput.trigger("select");
+    });
     $("#itemSubmitButton").on("click", (e) => handleAddingItem(e, true));
     $("#itemDeleteButton").on("click", (e) =>
     {
-        // want to return early if there was no item name (otherwise, the item quantity input's value would stay at 0 because handleAddingItem() would return early without doing anything)
+
         if(!formatItemName(itemNameInput.val()).length)
         {
-            // done to be consistent with Submit; clicking Submit reselects the name field even when it is empty (when this setting is enabled)
+
             if(shouldRefocusNameOnSubmit)
                 itemNameInput.trigger("select");
 
             return;
         }
 
-        //items.delete();
         itemQuantityInput.val("0");
         handleAddingItem(e, true);
     });
 
+    tradeOfferNameInput.on("focus", () =>
+    {
+        updateFuzzyMatches(tradeOfferNameInput, tradeOfferFuzzyMatchesHolder);
+    });
+    tradeOfferNameInput.on("blur", () =>
+    {
+        tradeOfferFuzzyMatchesHolder.empty();
+    });
+    tradeOfferNameInput.on("keydown", (e) =>
+    {
+        handleFuzzyMatchKeyboardSelection(e, tradeOfferFuzzyMatchesHolder);
+    });
+    tradeOfferNameInput.on("keyup", (e) =>
+    {
+        handleSubmittingTrade(e);
+        updateTradeDraftSummary();
+        updateFuzzyMatches(tradeOfferNameInput, tradeOfferFuzzyMatchesHolder);
+    });
+
+    tradeWantNameInput.on("focus", () =>
+    {
+        updateFuzzyMatches(tradeWantNameInput, tradeWantFuzzyMatchesHolder);
+    });
+    tradeWantNameInput.on("blur", () =>
+    {
+        tradeWantFuzzyMatchesHolder.empty();
+    });
+    tradeWantNameInput.on("keydown", (e) =>
+    {
+        handleFuzzyMatchKeyboardSelection(e, tradeWantFuzzyMatchesHolder);
+    });
+    tradeWantNameInput.on("keyup", (e) =>
+    {
+        handleSubmittingTrade(e);
+        updateTradeDraftSummary();
+        updateFuzzyMatches(tradeWantNameInput, tradeWantFuzzyMatchesHolder);
+    });
+    tradeOfferQuantityInput.on("keyup", (e) =>
+    {
+        handleSubmittingTrade(e);
+        updateTradeDraftSummary();
+    });
+    tradeWantQuantityInput.on("keyup", (e) =>
+    {
+        handleSubmittingTrade(e);
+        updateTradeDraftSummary();
+    });
+    $("#tradeOfferAddButton").on("click", () => addTradeDraftItem("offer"));
+    $("#tradeWantAddButton").on("click", () => addTradeDraftItem("want"));
+    $("#tradeSubmitButton").on("click", (e) => handleSubmittingTrade(e, true));
+    tradeCancelEditButton.on("click", () =>
+    {
+        clearTradeDraft();
+        updateTradeDraftSummary();
+        updateTradeSubmitButtonText();
+        rescaleScreenshotRegion();
+    });
+    $("#tradeClearButton").on("click", () =>
+    {
+        clearTradeDraft();
+        updateTradeDraftSummary();
+        updateTradeSubmitButtonText();
+        rescaleScreenshotRegion();
+    });
+    $("#tradeClearAllButton").on("click", () =>
+    {
+        if(!confirm("Clear all saved trades? This can't be undone."))
+            return;
+
+        tradeRows = [];
+        saveTradeRowsToLocalStorage();
+        clearTradeDraft();
+        updateTradeDisplay();
+        updateTradeDraftSummary();
+    });
+    disableOutsideTradeSelectionModeElems.prop("disabled", true);
+    $("#tradeSelectionToggleButton").on("click", (event) =>
+    {
+        const wasEnabled = getIsInTradeSelectionMode();
+        isTradeSelectionModeEnabled = !wasEnabled;
+        disableOutsideTradeSelectionModeElems.prop("disabled", wasEnabled);
+        tradeSelectionModeStateSpan.text(wasEnabled ? "Enable" : "Disable");
+        event.currentTarget.classList.toggle("selected", !wasEnabled);
+        updateTradeDisplay();
+    });
+    $("#tradeSelectAllButton").on("click", () =>
+    {
+        for(let tradeRow of tradeRows)
+            tradeRow.isSelected = true;
+        updateTradeDisplay();
+    });
+    $("#tradeClearSelectionButton").on("click", () =>
+    {
+        for(let tradeRow of tradeRows)
+            tradeRow.isSelected = false;
+        updateTradeDisplay();
+    });
+    $("#tradeDeleteSelectedButton").on("click", () =>
+    {
+        tradeRows = tradeRows.filter(tradeRow => !tradeRow.isSelected);
+        saveTradeRowsToLocalStorage();
+        clearTradeDraft();
+        updateTradeDisplay();
+        updateTradeDraftSummary();
+        updateTradeSubmitButtonText();
+    });
+    $("#tradeUnselectedVisibilityToggleButton").on("click", (event) =>
+    {
+        shouldHideUnselectedTrades = !shouldHideUnselectedTrades;
+        tradeUnselectedVisibilityStateSpan.text(shouldHideUnselectedTrades ? "Show" : "Hide");
+        event.currentTarget.classList.toggle("selected", shouldHideUnselectedTrades);
+        updateTradeDisplay();
+    });
 
     const coinImagePromise = getImageUrl("Coin")
         .then(imageUrl => coinImageUrl = imageUrl)
         .catch(e => console.log("Failed to get coin image url --", e));
 
-    $("#copyImageToClipboardButton").on("click", copyImageToClipboard);
+    $(".copyImageToClipboardButton").on("click", copyImageToClipboard);
 
-    // TODO -- all of this event stuff seems to be identical for both the settings and changelog popups (and probably for potential future ones as well); I should probably turn at least part of this into some function with parameters for the corresponding jquery objects/selectors (for show button, hide button, background, etc.)
-
-    // TODO -- I might want to eventually move this css stuff to a class, then use classList to add/remove these classes from the respective elements?  https://developer.mozilla.org/en-US/docs/Web/API/Element/classList
-    settingsOverlay.showButton.on("click", () =>
-    {
-        settingsOverlay.overlay.prop("hidden", false);
-        // disables scrolling the main page and removes the scrollbar from the side while the settings button is focused ( https://stackoverflow.com/questions/9280258/prevent-body-scrolling-but-allow-overlay-scrolling )
-        // have to set both due to how I'm hiding overflow-x via css (this might not actually be required; TODO -- see if the css file actually needs html and body to both have overflow set; it seems like both should be set to prevent running into issues though: https://stackoverflow.com/questions/41506456/why-body-overflow-not-working )
-        $("html, body").css("overflow-y", "hidden");
-        // prevents the screenshot region from shifting over to the right due to the scrollbar now missing ( https://stackoverflow.com/questions/1417934/how-to-prevent-scrollbar-from-repositioning-web-page and https://css-tricks.com/elegant-fix-jumping-scrollbar-issue/ and https://aykevl.nl/2014/09/fix-jumping-scrollbar )
-        screenshotRegion.css("margin-right", "calc(100vw - 100%)");
-    });
-    settingsOverlay.hideButton.on("click", () =>
-    {
-        settingsOverlay.overlay.prop("hidden", true);
-        $("html, body").css("overflow-y", "visible");
-        screenshotRegion.css("margin-right", "unset");
-    });
-    settingsOverlay.background.on("click", () =>
-    {
-        settingsOverlay.hideButton.trigger("click");
-    });
-
-
+    suggestionOverlayShowButton.on("click", () => setSuggestionOverlayVisible(true));
+    suggestionOverlay.hideButton.on("click", () => setSuggestionOverlayVisible(false));
+    suggestionOverlay.background.on("click", () => setSuggestionOverlayVisible(false));
+    suggestionForm.on("submit", submitSuggestionForm);
+    suggestionIncognitoInput.on("change", updateSuggestionIncognitoState);
 
     loadAllFromLocalStorage();
+    updateScreenshotEmptyState();
+    normalItemsPlaceholder.prop("hidden", !!items.size);
 
-    // want to keep this synchronous
     ensureItemsHaveMaxPriceSet();
-    // I could make total price update only once at the end when in price calc mode, but I've decided to update it with every new price loaded in ensureItemsHaveMaxPriceSet(); this way, the user can see the price/errors update in real time (it's more responsive).
-    /*
-    .then(() => {
-        if(getIsInPriceCalculationMode())
-            updateTotalPrice();
-    });
-    */
 
-    // want to update the layout after loading from local storage, but only after the coin image has loaded
     coinImagePromise.then(() =>
     {
         updateItemLayout();
     });
-
-
-
-    // these must all be after local storage is loaded (since their initial values change depending on what the user's settings had saved)
 
     $("#ExportButton").on("click", exportAll);
     $("#ImportButton").on("click", () =>
@@ -286,7 +471,7 @@ $(document).ready(() =>
         const files = event.target.files;
         if(files.length)
             importAll(await files[0].text());
-        event.target.value = null; // reset it to not have any file selected (so that if the user reselects the same file, it will trigger the "change" event to load/import it again)
+        event.target.value = null;
     });
 
     itemListDropdown.on("change", (event) =>
@@ -295,7 +480,7 @@ $(document).ready(() =>
 
         storeItemList();
 
-        activeItemList = event.target.value;
+        setCurrentModeActiveItemList(event.target.value);
 
         loadItemList();
     });
@@ -307,25 +492,21 @@ $(document).ready(() =>
             return;
         }
 
-        itemLists.delete(activeItemList);
-
-        activeItemList = "Default";
-
-        loadItemList();
+        deleteCurrentModeItemList(activeItemList);
     });
     createItemListInput.on("input", (event) =>
     {
-        createItemListButton.prop("disabled", itemLists.has(event.target.value));
+        createItemListButton.prop("disabled", getCurrentModeItemLists().has(event.target.value));
     });
     createItemListInput.on("keyup", (event) =>
     {
-        // create item list with current name upon clicking enter key (if it is a valid name)
+
         if(event.code === "Enter" && !createItemListButton.prop("disabled"))
             createItemListButton.trigger("click");
     });
     createItemListButton.on("click", () =>
     {
-        if(itemLists.has(createItemListInput.val()))
+        if(getCurrentModeItemLists().has(createItemListInput.val()))
         {
             console.log("Attempted to create an existing item list!  This shouldn't be possible; please contact JJCUBER.");
             return;
@@ -351,43 +532,18 @@ $(document).ready(() =>
         saveAllToLocalStorage();
     });
 
-    // TODO -- make sure nothing related to this (including the stuff in Persist.js) needs to be called before the stuff above (for a while, this was the first section of the settings overlay, but I have since added multiple settings above it).
     setUpAbbreviationMappingTable();
 
-
-    // on input for showing live modifications in the background (behind the settings popup)
-    bottomTextSettingInput.on("input", event =>
-    {
-        bottomText[0].innerText = event.target.value;
-    });
-    // on change for when focus is lost to the input area, which "commits" the changes to local storage as well
-    bottomTextSettingInput.on("change", event =>
-    {
-        bottomText[0].innerText = event.target.value;
-
-        saveAllToLocalStorage();
-
-        // I only do this on change and not on input because I fear that it would cause too much lag/input delay from processing this
-        rescaleScreenshotRegion();
-    });
     bottomText.on("click", () =>
     {
-        settingsOverlay.showButton.trigger("click");
-        // bottomTextSettingInput[0].scrollIntoView(false); // ensures that the textarea is visible/on screen (and puts it at the bottom so that it won't overlap with the x/close button)
-        bottomTextSettingInput[0].scrollIntoView(); // ensures that the textarea is visible/on screen (and puts it at the top; for some reason, iOS doesn't do the normal behavior of shifting the page up when showing the keyboard after doing it this way)
-        // TODO -- maybe this should be .focus() instead?
-        bottomTextSettingInput.trigger("select");
+        openStylingDrawer("bottomText");
     });
 
-
-    // (only fires once the slider is released)
     itemsPerRowSlider.on("change", () =>
     {
         saveAllToLocalStorage();
     });
 
-
-    // be careful; checked is a property, NOT an attribute (I originally was using .attr() -- https://api.jquery.com/attr/ )
     textListSeparatorRadios.eq(textListSeparatorSelectedRadio).prop("checked", true);
     textListCustomSeparatorInput[0].disabled = textListSeparatorRadios[textListSeparatorSelectedRadio].id !== "textListSeparatorCustomRadio";
 
@@ -397,7 +553,6 @@ $(document).ready(() =>
         {
             textListSeparatorSelectedRadio = event.data;
 
-            // textListCustomSeparatorInput[0].disabled = event.target.id !== "textListSeparatorCustomRadio";
             textListCustomSeparatorInput[0].disabled = event.target !== textListSeparatorCustomRadio[0];
 
             saveAllToLocalStorage();
@@ -426,7 +581,7 @@ $(document).ready(() =>
     });
     priceCalculationItemInput.on("keydown", (e) =>
     {
-        // should use key to get the value representation of the input, allowing numpad numbers to show up like normal numbers ( https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key and https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code )
+
         if(e.key.length !== 1 || e.key < '0' || e.key > '9')
             return;
         let selection = e.key - '0';
@@ -455,7 +610,7 @@ $(document).ready(() =>
         }
         catch
         {
-            // default to diamond ring for invalid item names
+
             itemNameFormatted = "Diamond_Ring";
 
             itemUrl = await getImageUrl(itemNameFormatted);
@@ -464,54 +619,23 @@ $(document).ready(() =>
 
         priceCalculationItem = new Item(itemNameFormatted, undefined, itemUrl, undefined, itemMaxPrice);
 
-        // TODO -- it might be better to just always make sure price gets immediately updated tbh (although, enabling price calc mode or showing of the price in screenshot will run update total price themselves)
-        if(getIsInPriceCalculationMode() || getIsPriceShownInScreenshot())
+        if(getIsInPriceCalculationMode())
             updateTotalPrice();
         saveAllToLocalStorage();
     });
-    // want to make it fire immediately the first time; I couldn't do this inside the load all function since this must be set after the load all and after the coin image url is fetched
+
     priceCalculationItemInput.trigger("change");
-
-
-    // TODO -- should I be using change event instead of click event for checkboxes (along with any input element variants)?  Resources such as https://stackoverflow.com/questions/3442322/jquery-checkbox-event-handling make it sound like click doesn't work for certain things, but they do seem to (which is likely due to how old this so question is).  This resource seems to better explain; in my use case, they are pretty much identical, though there is a potential distinction: https://stackoverflow.com/questions/11205957/jquery-difference-between-change-and-click-event-of-checkbox
-    showPriceInScreenshotCheckBox.on("click", () =>
-    {
-        let wasShowing = getIsPriceShownInScreenshot();
-        screenshotPriceHolder.prop("hidden", wasShowing);
-
-        showTotalInNormalModeCheckBox.prop("disabled", wasShowing);
-
-        if(!wasShowing)
-            updateTotalPrice();
-        saveAllToLocalStorage();
-    });
-
-    showTotalInNormalModeCheckBox.on("click", () =>
-    {
-        shouldShowTotalInNormalMode = !shouldShowTotalInNormalMode;
-
-        updateTotalPrice();
-        saveAllToLocalStorage();
-    });
-
-    hidePriceOrMultiplierCheckBox.on("click", () =>
-    {
-        shouldHidePriceOrMultiplier = !shouldHidePriceOrMultiplier;
-
-        updateItemLayout();
-        saveAllToLocalStorage();
-    });
 
     defaultQuantityInput.on("change", (event) =>
     {
-        // TODO -- should this instead be set within saveAllToLocalStorage()?  Probably not...
+
         defaultQuantity = event.target.value;
 
         saveAllToLocalStorage();
     });
     defaultPriceOrMultiplierInput.on("change", (event) =>
     {
-        // TODO -- should this instead be set within saveAllToLocalStorage()?  Probably not...
+
         defaultPriceOrMultiplier = event.target.value;
 
         saveAllToLocalStorage();
@@ -535,10 +659,6 @@ $(document).ready(() =>
         updateTotalPrice();
         saveAllToLocalStorage();
     });
-    // reduceAnimationsCheckBox.on("click", () =>
-    // {
-    //     // TODO -- figure out how to disable animations and transitions via js; I don't see a good way currently
-    // });
 
     $("#copyAsTextListButton").on("click", copyAsTextListToClipboard);
 
@@ -553,42 +673,35 @@ $(document).ready(() =>
         }
     });
 
-
     disableOutsidePriceCalculationModeElems.prop("disabled", true);
 
     $("#priceCalculationToggleButton").on("click", () =>
     {
-        // MUST use currentTarget (or just reference priceCalculationToggleButton); event.target gets set to the span if it is the one actually clicked ( https://developer.mozilla.org/en-US/docs/Web/API/Event/currentTarget )
-        // TODO -- maybe change all even.target's to even.currentTarget in my code?
+
         const toggleButton = event.currentTarget;
         const wasEnabled = getIsInPriceCalculationMode();
 
-        // make relevant buttons enabled/disabled
         disableInPriceCalculationModeElems.prop("disabled", !wasEnabled);
         disableOutsidePriceCalculationModeElems.prop("disabled", wasEnabled);
 
-        // make relevant elements hidden/visible
-        // TODO - maybe make this a class/two classes like how I did enabled/disabled buttons?  However, there aren't really enough elements to warrant that at the moment (though it could help express intent).
-        totalSelectedPriceArea.prop("hidden", wasEnabled);
+        isPriceCalculationModeEnabled = !wasEnabled;
         priceCalculationModeSelectionInfo.prop("hidden", wasEnabled);
 
         if(wasEnabled)
         {
-            // disable it
 
-            priceCalculationModeStateSpan.text("Enable"); // says the "opposite," since that's what it will change the state to on click
+            priceCalculationModeStateSpan.text("Enable");
             toggleButton.classList.remove("selected");
         }
         else
         {
-            // enable it
 
-            priceCalculationModeStateSpan.text("Disable"); // says the "opposite," since that's what it will change the state to on click
+            priceCalculationModeStateSpan.text("Disable");
             toggleButton.classList.add("selected");
         }
 
-        // restore previous/remove all selections/custom adornments (done by refreshing the layout)
         updateItemLayout();
+        updatePriceCalculationDetailsVisibility();
     });
 
     $("#selectAllButton").on("click", () =>
@@ -598,7 +711,6 @@ $(document).ready(() =>
 
         updateTotalPrice();
 
-        // need to update what items are and aren't visible now that all items have been selected (even previously hidden ones)
         if(shouldHideUnselectedItems)
             updateItemLayout();
     });
@@ -610,7 +722,6 @@ $(document).ready(() =>
 
         updateTotalPrice();
 
-        // need to update what items are and aren't visible now that all items have been deselected (even previously visible ones)
         if(shouldHideUnselectedItems)
             updateItemLayout();
     });
@@ -622,16 +733,25 @@ $(document).ready(() =>
             if(!item.isSelected)
                 continue;
 
+            if(getIsInfiniteQuantity(item.quantity))
+            {
+                item.customQuantity = undefined;
+                continue;
+            }
+
+            if(getIsInfiniteQuantity(item.customQuantity))
+            {
+                items.delete(item.name);
+                continue;
+            }
+
             item.quantity -= item.customQuantity ?? item.quantity;
 
             item.customQuantity = undefined;
 
-            // it should be fine to remove elements from a map while iterating over it according to https://stackoverflow.com/questions/35940216/es6-is-it-dangerous-to-delete-elements-from-set-map-during-set-map-iteration
             if(item.quantity <= 0)
                 items.delete(item.name);
 
-            // TODO - Should items that have a >0 quantity left stay selected?  On the one hand, one might consider custom quantities to be all you selected; on the other hand, one might consider custom quantities to be just part of the whole currently being worked on in this moment (which means that after subtracting said amount, they still want to work with the rest of said item's quantity and/or keep it selected).
-            // If I decide to deselect all, I should put an else to the if above which does item.isSelected = false;
         }
 
         updateItemLayout();
@@ -665,11 +785,12 @@ $(document).ready(() =>
 
     $("#equationVisibilityToggleButton").on("click", () =>
     {
-        // TODO - might want to use something like this for the price calculation toggle, since it can be tied to the total price div area
+
         const wasHidden = totalSelectedPriceEquationHolder.is("[hidden]");
 
         equationVisibilityStateSpan.text(wasHidden ? "Hide" : "Show");
         totalSelectedPriceEquationHolder.prop("hidden", !wasHidden);
+        updatePriceCalculationDetailsVisibility();
 
         const toggleButton = event.currentTarget;
         if(wasHidden)
@@ -692,35 +813,6 @@ $(document).ready(() =>
         shouldHideUnselectedItems = !shouldHideUnselectedItems;
         updateItemLayout();
     });
-
-
-
-
-    setUpChangelog();
-
-    changelogOverlay.showButton.on("click", () =>
-    {
-        changelogOverlay.overlay.prop("hidden", false);
-        // disables scrolling the main page and removes the scrollbar from the side while the settings button is focused ( https://stackoverflow.com/questions/9280258/prevent-body-scrolling-but-allow-overlay-scrolling )
-        $("html, body").css("overflow-y", "hidden");
-        // prevents the screenshot region from shifting over to the right due to the scrollbar now missing ( https://stackoverflow.com/questions/1417934/how-to-prevent-scrollbar-from-repositioning-web-page and https://css-tricks.com/elegant-fix-jumping-scrollbar-issue/ and https://aykevl.nl/2014/09/fix-jumping-scrollbar )
-        screenshotRegion.css("margin-right", "calc(100vw - 100%)");
-    });
-    changelogOverlay.hideButton.on("click", () =>
-    {
-        changelogOverlay.overlay.prop("hidden", true);
-        $("html, body").css("overflow-y", "visible");
-        screenshotRegion.css("margin-right", "unset");
-    });
-    changelogOverlay.background.on("click", () =>
-    {
-        changelogOverlay.hideButton.trigger("click");
-    });
-
-    handleVersionChange();
-
-
-
     failedCopyOverlay.hideButton.on("click", () =>
     {
         failedCopyOverlay.overlay.prop("hidden", true);
@@ -732,14 +824,12 @@ $(document).ready(() =>
         failedCopyOverlay.hideButton.trigger("click");
     });
 
-
-
     contactOverlay.showButton.on("click", () =>
     {
         contactOverlay.overlay.prop("hidden", false);
-        // disables scrolling the main page and removes the scrollbar from the side while the settings button is focused ( https://stackoverflow.com/questions/9280258/prevent-body-scrolling-but-allow-overlay-scrolling )
+
         $("html, body").css("overflow-y", "hidden");
-        // prevents the screenshot region from shifting over to the right due to the scrollbar now missing ( https://stackoverflow.com/questions/1417934/how-to-prevent-scrollbar-from-repositioning-web-page and https://css-tricks.com/elegant-fix-jumping-scrollbar-issue/ and https://aykevl.nl/2014/09/fix-jumping-scrollbar )
+
         screenshotRegion.css("margin-right", "calc(100vw - 100%)");
     });
     contactOverlay.hideButton.on("click", () =>
@@ -758,30 +848,18 @@ $(document).ready(() =>
         window.open("https://hd.jjtechdev.com/", "_blank");
     });
 
-
-
     prepareAllItemNames();
 
-
-
-    // prevents zooming in on input/textarea focus in iOS
-    // TODO -- maybe make this some class and/or css media query-related thing?
     if(isRunningIOS())
         $("input, textarea").css("font-size", "16px");
 
-
-    // rescale screenshot region whenever window/page is resized (also invokes it for the first time immediately to ensure it starts scaled properly)
     $(window).on("resize", rescaleScreenshotRegion);
     rescaleScreenshotRegion();
 });
 
-
-/* -------- scripts/Overlay.js -------- */
-// TODO -- maybe make show and hide functions?
 class Overlay
 {
-    // TODO -- extraIds is a bad name; it should be something pertaining to extra overlay elements (showButton, imageHolder, etc.)
-    // TODO - I might want to make a list of dictionary mappings from extra overlay element name to function for settings up (since I have repeated code pertaining to showButtons)
+
     constructor(overlayId, ...extraIds)
     {
         this.overlay = $(`#${overlayId}`);
@@ -791,7 +869,6 @@ class Overlay
         this.hideButton = this.overlay.find(".overlayHideButton");
         this.inner = this.overlay.find(".overlayInner");
 
-        // add the extra ids as valid this. entries
         for(let extraId of extraIds)
         {
             if(!extraId.length)
@@ -803,29 +880,745 @@ class Overlay
     }
 }
 
-
-/* -------- scripts/Item.js -------- */
-// There are more operators than the ones here technically supported by math.js, but I feel like these are all the "reasonable" ones to support for the automatic prepending of the old quantity/custom quantity ( https://mathjs.org/docs/expressions/syntax.html )
-// TODO -- I could theoretically make this a set, but that's probably not a good idea since the "keys" have differing lengths and I'm just looking for whether a given equation string starts with one of these keys
-const operators = ['+', '-', '*', '/', '^', '%', "mod", '&', '|', "<<", ">>>", ">>"]; // >>> should be before >> to ensure the full operator gets removed then readded later (if >> was first, ">>> 5" would only remove the first 2 '>' leaving "> 5")
-function handleAddingItem(e, usedSubmitButton = false)
+const operators = ['+', '-', '*', '/', '^', '%', "mod", '&', '|', "<<", ">>>", ">>"];
+function getIsInTradeView()
 {
-    // only want the name box to have the invalid red border until the user starts typing again (tabbing into this textbox also cancels it; unfortunately, this gets removed almost immediately if the user starts typing right after pressing enter, since it takes a bit of time for the fetch to occur and for the invalid class to be added, if needed)
-    if(itemNameInput.hasClass("invalid"))
-        itemNameInput.removeClass("invalid");
+    return tradeViewButton.hasClass("selected");
+}
 
+function setTradeViewEnabled(shouldEnable)
+{
+    if(shouldEnable === getIsInTradeView())
+        return;
 
-    // Don't want to accept changes while trying to copy the image
-    // TODO -- I don't handle actively copying image yet for anything related to price calculation mode; maybe I should do that?
+    if(shouldEnable && getIsInPriceCalculationMode())
+        $("#priceCalculationToggleButton").trigger("click");
+    if(!shouldEnable && getIsInTradeSelectionMode())
+        $("#tradeSelectionToggleButton").trigger("click");
+
+    storeItemList();
+    normalViewButton.toggleClass("selected", !shouldEnable);
+    tradeViewButton.toggleClass("selected", shouldEnable);
+    $("body").toggleClass("tradeView", shouldEnable);
+    activateItemListsForCurrentMode();
+    loadItemList();
+
+    itemEditorModeTitle.text(shouldEnable ? "Trade View" : "Add/Modify Item");
+    itemsPerRowOptionLabel.text(shouldEnable ? "Trades Per Row" : "Items Per Row");
+    itemsPerRowSlider.prop("max", shouldEnable ? 4 : 12);
+    itemsPerRowSlider.val(shouldEnable ? tradeRowsPerRow : itemsPerRow);
+    itemsPerRowLabel.text(shouldEnable ? tradeRowsPerRow : itemsPerRow);
+    normalItemEntryHint.prop("hidden", shouldEnable);
+    normalItemEntryArea.prop("hidden", shouldEnable);
+    tradeItemEntryArea.prop("hidden", !shouldEnable);
+    normalItemClickInfo.prop("hidden", shouldEnable);
+    priceCalculationModeSelectionInfo.prop("hidden", shouldEnable || !getIsInPriceCalculationMode());
+    updatePriceCalculationDetailsVisibility();
+
+    hideInTradeViewElems.prop("hidden", shouldEnable);
+    itemTable.prop("hidden", shouldEnable);
+    normalItemsPlaceholder.prop("hidden", shouldEnable || !!items.size);
+    tradeDisplay.prop("hidden", !shouldEnable);
+
+    if(shouldEnable)
+    {
+        screenshotPriceHolder.empty();
+        updateTradeDisplay();
+        updateTradeDraftSummary();
+        updateTradeSubmitButtonText();
+    }
+    else
+    {
+        tradeDisplay.empty();
+        updateItemLayout();
+    }
+
+    rescaleScreenshotRegion();
+}
+
+function updateScreenshotEmptyState()
+{
+    const isEmpty = getIsInTradeView() ? !getVisibleTradeRows().length : !items.size;
+    screenshotRegion.toggleClass("emptyPreview", isEmpty);
+}
+
+function handleFuzzyMatchKeyboardSelection(e, fuzzyMatchesHolder)
+{
+    if(e.key.length !== 1 || e.key < '0' || e.key > '9')
+        return;
+    let selection = e.key - '0';
+    if(selection === 0)
+        selection = 10;
+
+    const buttons = fuzzyMatchesHolder.find("button");
+    if(buttons.length < selection)
+        return;
+
+    buttons.eq(selection - 1).trigger("mousedown", {usedKeyboard: true});
+    e.preventDefault();
+}
+
+function getTradeSideForInput(itemInput)
+{
+    if(itemInput === tradeOfferNameInput)
+        return "offer";
+    if(itemInput === tradeWantNameInput)
+        return "want";
+    return undefined;
+}
+
+function getTradeInputCache(side)
+{
+    return side === "offer" ? tradeOfferInputItemCache : tradeWantInputItemCache;
+}
+
+function getTradeNameInput(side)
+{
+    return side === "offer" ? tradeOfferNameInput : tradeWantNameInput;
+}
+
+function getDisplacedTradeInputItem(side)
+{
+    const cachedItem = getTradeInputCache(side);
+    if(!cachedItem)
+        return undefined;
+
+    return formatItemName(getTradeNameInput(side).val()) === cachedItem.name ? undefined : cachedItem;
+}
+
+function addDisplacedTradeInputItem(itemList, side)
+{
+    const displacedItem = getDisplacedTradeInputItem(side);
+    if(displacedItem)
+        addOrMergeTradeItem(itemList, Object.assign(new Item(), displacedItem));
+}
+
+function getTradeDraftItemsForSubmit(side)
+{
+    const sourceItems = side === "offer" ? tradeDraftOfferItems : tradeDraftWantItems;
+    const itemsForSubmit = sourceItems.map(item => Object.assign(new Item(), item));
+    addDisplacedTradeInputItem(itemsForSubmit, side);
+    sortTradeItemsByOrder(itemsForSubmit);
+    return itemsForSubmit;
+}
+
+function handleSubmittingTrade(e, usedSubmitButton = false)
+{
+    clearTradeInvalidState();
+
     if(isActivelyCopyingImage)
         return;
 
-    // TODO -- might want to be using e.key instead
     if(!usedSubmitButton && e.code !== "Enter")
         return;
 
-    // at this point, the user has attempted to submit (or delete), so the input should get reselected (if the setting is enabled; this mostly just matters for people who click the submit button instead of enter)
-    // note that this also occurs when Delete button gets clicked
+    Promise.all(tradeDraftPendingPromises)
+        .then(() => submitTradeRow())
+        .catch(e =>
+        {
+            console.log("Failed to resolve pending trade draft items --", e);
+        });
+}
+
+function submitTradeRow()
+{
+    const offerItems = getTradeDraftItemsForSubmit("offer");
+    const wantItems = getTradeDraftItemsForSubmit("want");
+    const hasOfferInput = formatItemName(tradeOfferNameInput.val()).length > 0;
+    const hasWantInput = formatItemName(tradeWantNameInput.val()).length > 0;
+
+    Promise.all([
+        hasOfferInput ? getTradeInputItem(tradeOfferNameInput, tradeOfferQuantityInput) : undefined,
+        hasWantInput ? getTradeInputItem(tradeWantNameInput, tradeWantQuantityInput) : undefined
+    ])
+        .then(([offerInputItem, wantInputItem]) =>
+        {
+            if(offerInputItem)
+                addOrMergeTradeItem(offerItems, offerInputItem);
+            if(wantInputItem)
+                addOrMergeTradeItem(wantItems, wantInputItem);
+            sortTradeItemsByOrder(offerItems);
+            sortTradeItemsByOrder(wantItems);
+
+            if(!offerItems.length)
+                tradeOfferNameInput.addClass("invalid");
+            if(!wantItems.length)
+                tradeWantNameInput.addClass("invalid");
+            if(!offerItems.length || !wantItems.length)
+                return;
+
+            if(editingTradeRowIndex === undefined)
+                tradeRows.push({
+                    offerItems,
+                    wantItems,
+                    isSelected: getIsInTradeSelectionMode() && shouldHideUnselectedTrades
+                });
+            else
+                tradeRows[editingTradeRowIndex] = {offerItems, wantItems, isSelected: tradeRows[editingTradeRowIndex].isSelected};
+            saveTradeRowsToLocalStorage();
+            clearTradeDraft();
+            updateTradeDisplay();
+            updateTradeDraftSummary();
+            updateTradeSubmitButtonText();
+            tradeOfferNameInput.trigger("focus").trigger("select");
+        })
+        .catch(e =>
+        {
+            console.log("Failed to create trade row --", e);
+        });
+}
+
+function addTradeDraftItem(side)
+{
+    const isOfferSide = side === "offer";
+    const itemList = isOfferSide ? tradeDraftOfferItems : tradeDraftWantItems;
+    const nameInput = isOfferSide ? tradeOfferNameInput : tradeWantNameInput;
+    const quantityInput = isOfferSide ? tradeOfferQuantityInput : tradeWantQuantityInput;
+    const itemOrder = tradeDraftOrder++;
+
+    clearTradeInvalidState();
+
+    const pendingPromise = getTradeInputItem(nameInput, quantityInput, true)
+        .then(item =>
+        {
+            if(!item)
+                return;
+
+            addDisplacedTradeInputItem(itemList, side);
+            addOrMergeTradeItem(itemList, item);
+            item.tradeOrder = itemOrder;
+            sortTradeItemsByOrder(itemList);
+            clearTradeNameInput(side, item.name);
+            focusTradeQuantityInput(side);
+            updateTradeDraftSummary();
+            rescaleScreenshotRegion();
+        })
+        .catch(e =>
+        {
+            console.log("Failed to add trade draft item --", e);
+        })
+        .finally(() =>
+        {
+            tradeDraftPendingPromises = tradeDraftPendingPromises.filter(promise => promise !== pendingPromise);
+        });
+    tradeDraftPendingPromises.push(pendingPromise);
+}
+
+async function getTradeInputItem(nameInput, quantityInput, shouldRequireName = false)
+{
+    const itemNameFormatted = formatItemName(nameInput.val());
+    if(!itemNameFormatted.length)
+    {
+        if(shouldRequireName)
+            nameInput.addClass("invalid");
+        return undefined;
+    }
+
+    let itemQuantity;
+    try
+    {
+        itemQuantity = Math.floor(math.evaluate(quantityInput.val().trim()));
+    }
+    catch(e)
+    {
+        quantityInput.addClass("invalid");
+        console.log("Unable to evaluate trade quantity --", e);
+        throw e;
+    }
+
+    if(!Number.isFinite(itemQuantity) || itemQuantity <= 0)
+    {
+        quantityInput.addClass("invalid");
+        throw new Error("Invalid trade quantity");
+    }
+
+    try
+    {
+        const cachedItem = nameInput === tradeOfferNameInput ? tradeOfferInputItemCache : tradeWantInputItemCache;
+        if(cachedItem && cachedItem.name === itemNameFormatted)
+        {
+            const item = new Item(itemNameFormatted, itemQuantity, cachedItem.url, "", NaN);
+            item.tradeOrder = cachedItem.tradeOrder;
+            return item;
+        }
+
+        const imageUrl = await getImageUrl(itemNameFormatted);
+        return new Item(itemNameFormatted, itemQuantity, imageUrl, "", NaN);
+    }
+    catch(e)
+    {
+        nameInput.addClass("invalid");
+        throw e;
+    }
+}
+
+function addOrMergeTradeItem(itemList, item)
+{
+    const existingItem = itemList.find(currItem => currItem.name === item.name);
+    if(existingItem)
+        existingItem.quantity += item.quantity;
+    else
+        itemList.push(item);
+}
+
+function sortTradeItemsByOrder(itemList)
+{
+    itemList.sort((item1, item2) => (item1.tradeOrder ?? Infinity) - (item2.tradeOrder ?? Infinity));
+}
+
+function clearTradeDraft()
+{
+    tradeDraftOfferItems = [];
+    tradeDraftWantItems = [];
+    tradeDraftPendingPromises = [];
+    tradeDraftOrder = 0;
+    editingTradeRowIndex = undefined;
+    clearTradeInputs();
+    clearTradeInvalidState();
+    updateTradeDraftControls();
+}
+
+function clearTradeInputs(side = "all")
+{
+    if(side === "all" || side === "offer")
+    {
+        tradeOfferNameInput.val("");
+        tradeOfferQuantityInput.val("");
+        tradeOfferInputItemCache = undefined;
+    }
+
+    if(side === "all" || side === "want")
+    {
+        tradeWantNameInput.val("");
+        tradeWantQuantityInput.val("");
+        tradeWantInputItemCache = undefined;
+    }
+}
+
+function clearTradeNameInput(side, itemNameToClear)
+{
+    if(side === "offer")
+    {
+        if(formatItemName(tradeOfferNameInput.val()) === itemNameToClear)
+        {
+            tradeOfferNameInput.val("");
+            tradeOfferInputItemCache = undefined;
+        }
+    }
+    else
+    {
+        if(formatItemName(tradeWantNameInput.val()) === itemNameToClear)
+        {
+            tradeWantNameInput.val("");
+            tradeWantInputItemCache = undefined;
+        }
+    }
+}
+
+function clearTradeInvalidState()
+{
+    tradeOfferNameInput.removeClass("invalid");
+    tradeWantNameInput.removeClass("invalid");
+    tradeOfferQuantityInput.removeClass("invalid");
+    tradeWantQuantityInput.removeClass("invalid");
+}
+
+function updateTradeDraftSummary()
+{
+    const offerSummaryParts = getTradeSummaryParts("offer");
+    const wantSummaryParts = getTradeSummaryParts("want");
+    const hasDraft = offerSummaryParts.length || wantSummaryParts.length;
+    updateTradeDraftControls();
+    tradeDraftSummary.prop("hidden", !hasDraft);
+    if(!hasDraft)
+    {
+        tradeDraftSummary.text("");
+        return;
+    }
+
+    const offerSummary = offerSummaryParts.length ? offerSummaryParts.join(" + ") : "...";
+    const wantSummary = wantSummaryParts.length ? wantSummaryParts.join(" + ") : "...";
+    tradeDraftSummary.text(`${editingTradeRowIndex === undefined ? "Draft" : "Editing"}: ${offerSummary} for ${wantSummary}`);
+}
+
+function updateTradeDraftControls()
+{
+    const hasDraftItems = tradeDraftOfferItems.length || tradeDraftWantItems.length || editingTradeRowIndex !== undefined;
+    $("#tradeClearButton").prop("disabled", !hasDraftItems);
+}
+
+function getTradeSummaryParts(side)
+{
+    const itemList = side === "offer" ? tradeDraftOfferItems : tradeDraftWantItems;
+    const parts = itemList.map(item => formatTradeItemSummary(item));
+    const cachedItem = editingTradeRowIndex === undefined ? undefined : getTradeInputCache(side);
+    if(cachedItem && !itemList.some(item => item.name === cachedItem.name))
+        parts.unshift(formatTradeItemSummary(cachedItem));
+
+    return parts;
+}
+
+function updateTradeSubmitButtonText()
+{
+    $("#tradeSubmitButton").html(`<i data-lucide="save"></i>${editingTradeRowIndex === undefined ? "Save Trade Row" : "Update Trade Row"}`);
+    tradeCancelEditButton.prop("hidden", editingTradeRowIndex === undefined);
+    renderLucideIcons();
+}
+
+function updateTradeDisplay()
+{
+    tradeDisplay.empty();
+    tradeDisplay.css("grid-template-columns", `repeat(${tradeRowsPerRow}, max-content)`);
+    updateScreenshotEmptyState();
+
+    const visibleTradeRows = getVisibleTradeRows();
+    if(!visibleTradeRows.length)
+    {
+        const placeholder = document.createElement("p");
+        placeholder.innerText = tradeRows.length ? "Select trades to show in the preview" : "Add a trade to preview the ratio";
+        placeholder.classList.add("tradePlaceholder");
+        tradeDisplay.append(placeholder);
+        rescaleScreenshotRegion();
+        return;
+    }
+
+    for(let tradeRow of visibleTradeRows)
+        tradeDisplay.append(createTradeRow(tradeRow, tradeRows.indexOf(tradeRow)));
+
+    renderLucideIcons();
+    rescaleScreenshotRegion();
+}
+
+function getVisibleTradeRows()
+{
+    if(getIsInTradeSelectionMode() && shouldHideUnselectedTrades)
+        return tradeRows.filter(tradeRow => tradeRow.isSelected);
+
+    return tradeRows;
+}
+
+function getIsInTradeSelectionMode()
+{
+    return isTradeSelectionModeEnabled;
+}
+
+function toggleTradeRowSelection(index)
+{
+    const tradeRow = tradeRows[index];
+    if(!tradeRow)
+        return;
+
+    tradeRow.isSelected = !tradeRow.isSelected;
+    updateTradeDisplay();
+}
+
+function createTradeRow(tradeRow, index)
+{
+    const rowBlock = document.createElement("div");
+    rowBlock.classList.add("tradeRowBlock");
+    if(getIsInTradeSelectionMode() && tradeRow.isSelected)
+        rowBlock.classList.add("selected");
+    $(rowBlock).on("click", () =>
+    {
+        if(getIsInTradeSelectionMode())
+            toggleTradeRowSelection(index);
+        else
+            editTradeRow(index, true);
+    });
+
+    const deleteButton = document.createElement("button");
+    deleteButton.innerHTML = '<img src="images/trash-light.png?v=2" alt="">';
+    deleteButton.title = "Remove trade";
+    deleteButton.setAttribute("aria-label", "Remove trade");
+    deleteButton.classList.add("tradeDeleteButton");
+    $(deleteButton).on("click", (event) =>
+    {
+        event.stopPropagation();
+        removeTradeRow(index);
+    });
+    rowBlock.appendChild(deleteButton);
+
+    const row = document.createElement("div");
+    row.classList.add("tradeRow");
+
+    row.appendChild(createTradeSide(tradeRow.offerItems, index, "offer"));
+
+    const direction = document.createElement("p");
+    direction.innerText = "for";
+    direction.classList.add("tradeDirection");
+    row.appendChild(direction);
+
+    row.appendChild(createTradeSide(tradeRow.wantItems, index, "want"));
+
+    const ratioBadge = document.createElement("p");
+    ratioBadge.innerText = getTradeRatioText(tradeRow.offerItems, tradeRow.wantItems);
+    ratioBadge.classList.add("tradeRatioBadge");
+    row.appendChild(ratioBadge);
+
+    rowBlock.appendChild(row);
+
+    return rowBlock;
+}
+
+function editTradeRow(index, shouldPopulateInputs = false)
+{
+    const tradeRow = tradeRows[index];
+    if(!tradeRow)
+        return;
+
+    editingTradeRowIndex = index;
+    tradeDraftOfferItems = tradeRow.offerItems.map((item, i) =>
+    {
+        const copy = Object.assign(new Item(), item);
+        copy.tradeOrder = i;
+        return copy;
+    });
+    tradeDraftWantItems = tradeRow.wantItems.map((item, i) =>
+    {
+        const copy = Object.assign(new Item(), item);
+        copy.tradeOrder = i;
+        return copy;
+    });
+    tradeDraftPendingPromises = [];
+    tradeDraftOrder = Math.max(tradeDraftOfferItems.length, tradeDraftWantItems.length);
+    clearTradeInputs();
+    clearTradeInvalidState();
+    if(shouldPopulateInputs)
+    {
+        moveTradeDraftItemAtIndexToInput("offer", 0);
+        moveTradeDraftItemAtIndexToInput("want", 0);
+    }
+    updateTradeDraftSummary();
+    updateTradeSubmitButtonText();
+}
+
+function removeTradeRow(index)
+{
+    tradeRows.splice(index, 1);
+    if(editingTradeRowIndex === index)
+        clearTradeDraft();
+    else if(editingTradeRowIndex > index)
+        editingTradeRowIndex--;
+
+    saveTradeRowsToLocalStorage();
+    updateTradeDisplay();
+    updateTradeDraftSummary();
+    updateTradeSubmitButtonText();
+}
+
+function createTradeSide(items, rowIndex, side)
+{
+    const tradeSide = document.createElement("div");
+    tradeSide.classList.add("tradeSide");
+
+    for(let item of items)
+        tradeSide.appendChild(createTradeCard(item, () =>
+        {
+            if(getIsInTradeSelectionMode())
+            {
+                toggleTradeRowSelection(rowIndex);
+                return;
+            }
+
+            editTradeRow(rowIndex);
+            moveTradeDraftItemToInput(side, item.name);
+            populateOppositeTradeSideInput(side);
+            focusTradeQuantityInput(side);
+        }));
+
+    return tradeSide;
+}
+
+function createTradeCard(item, clickHandler)
+{
+    const card = document.createElement("div");
+    card.classList.add("tradeCard");
+    if(clickHandler)
+    {
+        $(card).on("click", (event) =>
+        {
+            event.stopPropagation();
+            clickHandler();
+        });
+    }
+
+    const image = document.createElement("img");
+    image.src = item.url;
+    image.alt = item.getHumanReadableName();
+
+    const quantityLabel = document.createElement("p");
+    quantityLabel.innerText = item.quantity;
+    quantityLabel.classList.add("label", "tradeQuantityLabel");
+
+    const itemName = document.createElement("p");
+    itemName.innerText = item.getHumanReadableName();
+    itemName.classList.add("tradeItemName");
+
+    card.appendChild(image);
+    card.appendChild(quantityLabel);
+    card.appendChild(itemName);
+
+    return card;
+}
+
+function moveTradeDraftItemToInput(side, itemName)
+{
+    const itemList = side === "offer" ? tradeDraftOfferItems : tradeDraftWantItems;
+    const itemIndex = itemList.findIndex(item => item.name === itemName);
+    if(itemIndex === -1)
+        return;
+
+    moveTradeDraftItemAtIndexToInput(side, itemIndex);
+}
+
+function moveTradeDraftItemAtIndexToInput(side, itemIndex)
+{
+    const itemList = side === "offer" ? tradeDraftOfferItems : tradeDraftWantItems;
+    if(itemIndex < 0 || itemIndex >= itemList.length)
+        return;
+
+    const item = itemList.splice(itemIndex, 1)[0];
+    if(side === "offer")
+    {
+        tradeOfferNameInput.val(item.getHumanReadableName());
+        tradeOfferQuantityInput.val(item.quantity);
+        tradeOfferInputItemCache = item;
+        tradeOfferNameInput.trigger("select");
+    }
+    else
+    {
+        tradeWantNameInput.val(item.getHumanReadableName());
+        tradeWantQuantityInput.val(item.quantity);
+        tradeWantInputItemCache = item;
+        tradeWantNameInput.trigger("select");
+    }
+
+    updateTradeDraftSummary();
+    focusTradeQuantityInput(side);
+}
+
+function populateOppositeTradeSideInput(side)
+{
+    if(side === "offer")
+        moveTradeDraftItemAtIndexToInput("want", 0);
+    else
+        moveTradeDraftItemAtIndexToInput("offer", 0);
+}
+
+function focusTradeQuantityInput(side)
+{
+    if(side === "offer")
+        tradeOfferQuantityInput.trigger("select");
+    else
+        tradeWantQuantityInput.trigger("select");
+}
+
+function formatTradeSideSummary(items)
+{
+    return items.map(formatTradeItemSummary).join(" + ");
+}
+
+function formatTradeItemSummary(item)
+{
+    return `${item.quantity}x ${item.getHumanReadableName()}`;
+}
+
+function getTradeInputSummary(side)
+{
+    const nameInput = side === "offer" ? tradeOfferNameInput : tradeWantNameInput;
+    const quantityInput = side === "offer" ? tradeOfferQuantityInput : tradeWantQuantityInput;
+    const cachedItem = side === "offer" ? tradeOfferInputItemCache : tradeWantInputItemCache;
+    const rawName = nameInput.val().trim();
+
+    if(!rawName.length)
+        return undefined;
+
+    const itemName = formatItemName(rawName);
+    const quantity = quantityInput.val().trim() || "1";
+    const displayName = cachedItem && cachedItem.name === itemName ? cachedItem.getHumanReadableName() : rawName;
+    return `${quantity}x ${displayName}`;
+}
+
+function getTradeSideRatioTotal(items)
+{
+    return items.reduce((total, item) => total + getTradeRatioQuantity(item), 0);
+}
+
+function getTradeRatioQuantity(item)
+{
+    return customItemNames.has(item.name) ? item.quantity * 89 : item.quantity;
+}
+
+function getTradeRatioText(offerItems, wantItems)
+{
+    const offerSetCount = getTradeSetCount(offerItems);
+    const wantSetCount = getTradeSetCount(wantItems);
+    const offerTotal = getTradeSideRatioTotal(offerItems);
+    const wantTotal = getTradeSideRatioTotal(wantItems);
+
+    if(wantSetCount > 0 && wantSetCount === getTradeSideQuantityTotal(wantItems))
+        return `${formatTradeRatioNumber(offerTotal / wantSetCount)}:89`;
+
+    if(offerSetCount > 0 && offerSetCount === getTradeSideQuantityTotal(offerItems))
+        return `89:${formatTradeRatioNumber(wantTotal / offerSetCount)}`;
+
+    return `${formatTradeRatioNumber(offerTotal)}:${formatTradeRatioNumber(wantTotal)}`;
+}
+
+function getTradeSetCount(items)
+{
+    return items.reduce((total, item) => total + (customItemNames.has(item.name) ? item.quantity : 0), 0);
+}
+
+function getTradeSideQuantityTotal(items)
+{
+    return items.reduce((total, item) => total + item.quantity, 0);
+}
+
+function formatTradeRatioNumber(num)
+{
+    return Number.isInteger(num) ? num : +num.toFixed(2);
+}
+
+const INFINITY_QUANTITY = "\u221e";
+
+function getIsInfiniteQuantity(quantity)
+{
+    return quantity === INFINITY_QUANTITY;
+}
+
+function getQuantitySortValue(quantity)
+{
+    return getIsInfiniteQuantity(quantity) ? Number.POSITIVE_INFINITY : quantity;
+}
+
+function getHasInfiniteQuantity(itemsToCheck, shouldIgnoreCustomValues = false, shouldOnlyCheckSelected = false)
+{
+    for(let item of itemsToCheck)
+    {
+        if(shouldOnlyCheckSelected && !item.isSelected)
+            continue;
+
+        const quantity = shouldIgnoreCustomValues ? item.quantity : (item.customQuantity ?? item.quantity);
+        if(getIsInfiniteQuantity(quantity))
+            return true;
+    }
+
+    return false;
+}
+
+function handleAddingItem(e, usedSubmitButton = false)
+{
+
+    if(itemNameInput.hasClass("invalid"))
+        itemNameInput.removeClass("invalid");
+
+    if(isActivelyCopyingImage)
+        return;
+
+    if(!usedSubmitButton && e.code !== "Enter")
+        return;
+
     if(shouldRefocusNameOnSubmit)
         itemNameInput.trigger("select");
 
@@ -835,7 +1628,7 @@ function handleAddingItem(e, usedSubmitButton = false)
 
     let itemQuantity, prependedQuantityOperator = "";
     let itemQuantityEquation = itemQuantityInput.val().trim();
-    // only want to separate starting operator if the item already exists (if the item doesn't exist, the whole quantity should be evaluated as one equation)
+
     if(items.has(itemNameFormatted))
     {
         for(let operator of operators)
@@ -851,8 +1644,19 @@ function handleAddingItem(e, usedSubmitButton = false)
 
     try
     {
-        // rest of equation is calculated beforehand so that addItem() gets an actual value
-        itemQuantity = itemQuantityEquation.length ? math.evaluate(itemQuantityEquation) : 0;
+
+        if(itemQuantityEquation === INFINITY_QUANTITY)
+        {
+            if(!generatedImageEnableInfinityInput.prop("checked") || prependedQuantityOperator)
+                return;
+
+            itemQuantity = INFINITY_QUANTITY;
+        }
+        else
+            itemQuantity = itemQuantityEquation.length ? math.evaluate(itemQuantityEquation) : 0;
+
+        if(!getIsInfiniteQuantity(itemQuantity) && !Number.isFinite(itemQuantity))
+            return;
     }
     catch(e)
     {
@@ -874,7 +1678,6 @@ function handleAddingItem(e, usedSubmitButton = false)
     itemPriceOrMultiplierInput.val(defaultPriceOrMultiplier);
 }
 
-
 class Item
 {
     static fieldsToOmitFromLocalStorage = new Set(["customQuantity", "customPriceOrMultiplier", "isSelected"]);
@@ -886,7 +1689,6 @@ class Item
         this.priceOrMultiplier = priceOrMultiplier;
         this.maxPrice = maxPrice;
 
-        // these should not persist across sessions (I also omit them from the JSON.stringify)
         this.customQuantity = undefined;
         this.customPriceOrMultiplier = undefined;
         this.isSelected = false;
@@ -897,7 +1699,6 @@ class Item
         return this.name.replaceAll("_", " ");
     }
 
-    // returns [totalPrice, equation, error, warning]
     calculateTotalPrice(shouldIgnoreCustomValues = false)
     {
         let quantity = this.customQuantity ?? this.quantity,
@@ -910,9 +1711,11 @@ class Item
             priceOrMultiplier = this.priceOrMultiplier;
         }
 
+        if(getIsInfiniteQuantity(quantity))
+            return [NaN, INFINITY_QUANTITY, `${this.getHumanReadableName()} has an infinite quantity, so its total cannot be calculated.`];
+
         if(!maxPrice && !customItemNames.has(this.name))
             return [NaN, "NaN", `${this.getHumanReadableName()} doesn't have a valid maximum price (${maxPrice}).`];
-
 
         priceOrMultiplier = priceOrMultiplier.trim();
 
@@ -925,7 +1728,7 @@ class Item
         }
         else if(priceOrMultiplier.endsWith('x'))
         {
-            // this is to handle when a custom item name without a maximum price reaches here
+
             if(!maxPrice)
                 return [NaN, "NaN", `${this.getHumanReadableName()} is a custom item without a valid maximum price (${maxPrice}).`];
 
@@ -940,7 +1743,7 @@ class Item
 
         if(mult)
             price = `${maxPrice}*(${mult})`;
-        // I'm doing this so that it can be shown to the user in full
+
         price = `${quantity}*(${price})`;
 
         try
@@ -950,52 +1753,52 @@ class Item
         catch(e)
         {
             console.log(e);
-            // I believe that it would only ever be an issue with the price/mult?
-            // return [NaN, price, `${this.getHumanReadableName()} has some invalid value (quantity: ${quantity}, price/multiplier: ${priceOrMultiplier}, max price: ${maxPrice} -- equation: ${price}).`, warning];
+
             return [NaN, price, `${this.getHumanReadableName()} has an invalid price/multiplier (price/multiplier: ${priceOrMultiplier} -- equation: ${price}).`, warning];
         }
     }
 }
 
-
 function addItem(itemNameFormatted, itemQuantity, itemPriceOrMultiplier, prependedQuantityOperator = "")
 {
     const isInPriceCalculationMode = getIsInPriceCalculationMode();
 
-    // the itemQuantity is already completely calculated, but we need to ensure that it isn't floating-point
-    if(!prependedQuantityOperator)
+    if(!prependedQuantityOperator && !getIsInfiniteQuantity(itemQuantity))
         itemQuantity = Math.floor(itemQuantity);
 
     if(items.has(itemNameFormatted))
     {
         const currItem = items.get(itemNameFormatted);
 
-        // modifies the custom fields instead when in price calculation mode
         if(isInPriceCalculationMode)
         {
+            if(prependedQuantityOperator.length && (getIsInfiniteQuantity(currItem.customQuantity ?? currItem.quantity) || getIsInfiniteQuantity(itemQuantity)))
+                return Promise.resolve();
+
             if(prependedQuantityOperator.length)
                 itemQuantity = Math.floor(math.evaluate(`${currItem.customQuantity ?? currItem.quantity} ${prependedQuantityOperator} ${itemQuantity}`));
-            // only stores custom if it differs; custom quantity set to <=0 defaults back to normal quantity, and custom price/mult gets wiped if its field becomes empty (otherwise the user might try to wipe it out, only to find out that it makes the mult default to 1x)
-            currItem.customQuantity = (itemQuantity > 0 && itemQuantity !== currItem.quantity) ? itemQuantity : undefined;
+
+            currItem.customQuantity = ((getIsInfiniteQuantity(itemQuantity) || itemQuantity > 0) && itemQuantity !== currItem.quantity) ? itemQuantity : undefined;
             currItem.customPriceOrMultiplier = (itemPriceOrMultiplier.trim().length && itemPriceOrMultiplier !== currItem.priceOrMultiplier) ? itemPriceOrMultiplier : undefined;
 
-            // makes sure that the item just modified is selected so that the custom value is visible to the user (if the user modified the value, they likely wanted it to be selected); this is to help with the fact that clicking on a selected item's quantity/price will deselect it
             currItem.isSelected = true;
 
             return Promise.resolve();
         }
 
+        if(prependedQuantityOperator.length && getIsInfiniteQuantity(currItem.quantity))
+            return Promise.resolve();
+
         if(prependedQuantityOperator.length)
             itemQuantity = Math.floor(math.evaluate(`${currItem.quantity} ${prependedQuantityOperator} ${itemQuantity}`));
 
-        if(itemQuantity > 0)
+        if(getIsInfiniteQuantity(itemQuantity) || itemQuantity > 0)
         {
             const prevQuantity = currItem.quantity;
             currItem.quantity = itemQuantity;
             currItem.priceOrMultiplier = itemPriceOrMultiplier;
 
-            // need to wipe out custom values if they now match the new quantity/prices
-            if(currItem.customQuantity === currItem.quantity || (currItem.customQuantity > currItem.quantity && currItem.customQuantity < prevQuantity)) // after updating an item's actual quantity, custom quantities above it should reset/"snap" back to the new quantity (unless it was already above it; custom quantity won't ever equal previous quantity, since it would have just gotten reset to undefined)
+            if(currItem.customQuantity === currItem.quantity || (currItem.customQuantity > currItem.quantity && currItem.customQuantity < prevQuantity))
                 currItem.customQuantity = undefined;
             if(currItem.customPriceOrMultiplier === currItem.priceOrMultiplier)
                 currItem.customPriceOrMultiplier = undefined;
@@ -1008,18 +1811,15 @@ function addItem(itemNameFormatted, itemQuantity, itemPriceOrMultiplier, prepend
         return Promise.resolve();
     }
 
-    // don't want to add new items in this mode
     if(isInPriceCalculationMode)
         return Promise.resolve();
 
-    if(itemQuantity <= 0)
+    if(!getIsInfiniteQuantity(itemQuantity) && itemQuantity <= 0)
         return Promise.resolve();
 
     return getImageUrl(itemNameFormatted)
         .then(async imageUrl =>
         {
-            console.log(imageUrl);
-
             const maxPrice = await getMaxPrice(itemNameFormatted);
 
             items.set(itemNameFormatted, new Item(itemNameFormatted, itemQuantity, imageUrl, itemPriceOrMultiplier, maxPrice));
@@ -1027,7 +1827,6 @@ function addItem(itemNameFormatted, itemQuantity, itemPriceOrMultiplier, prepend
             saveAllToLocalStorage();
         });
 }
-
 
 function formatItemName(itemName)
 {
@@ -1047,12 +1846,29 @@ function handleAbbreviations(itemName)
     return abbreviationMapping.get(itemName.toLowerCase()) ?? itemName;
 }
 
-// Items with "abnormal" casing are abbreviations and items with the word "and" in them (I could just replace all and's with And, but that might not be very future-proof or have a weird edge-case)
 const specialNameMapping = new Map([
     ["Tnt_Barrel", "TNT_Barrel"],
     ["Blt_Salad", "BLT_Salad"],
+    ["Bem", "BEM Set"],
+    ["Bems", "BEM Set"],
+    ["Bemset", "BEM Set"],
+    ["Sem", "SEM Set"],
+    ["Sems", "SEM Set"],
+    ["Semset", "SEM Set"],
+    ["Tem", "TEM Set"],
+    ["Tems", "TEM Set"],
+    ["Temset", "TEM Set"],
+    ["Lem", "LEM Set"],
+    ["Lems", "LEM Set"],
+    ["Lemset", "LEM Set"],
+    ["Wax", "Beeswax"],
+    ["Lobster", "Lobster_Tail"],
+    ["Lobsters", "Lobster_Tail"],
+    ["Feather", "Duck_Feather"],
+    ["Feathers", "Duck_Feather"],
     ["Bacon_And_Eggs", "Bacon_and_Eggs"],
     ["Fish_And_Chips", "Fish_and_Chips"],
+    ["Lobster_Tails", "Lobster_Tail"],
     ["Peanut_Butter_And_Jelly_Sandwich", "Peanut_Butter_and_Jelly_Sandwich"],
     ["Frutti_Di_Mare_Pizza", "Frutti_di_Mare_Pizza"]
 ]);
@@ -1062,6 +1878,7 @@ function handleSpecialNames(itemName)
 }
 
 const customItemNames = new Set(["BEM Set", "SEM Set", "TEM Set", "LEM Set"]);
+const localImageItemNames = new Set([...customItemNames, "Lamb_Doner_Wrap", "Tower_Doner_Supreme", "Spicy_Bean_Doner"]);
 function setUpCustomItems()
 {
     for(let name of customItemNames)
@@ -1070,25 +1887,20 @@ function setUpCustomItems()
 
 function getImageUrl(itemNameTitleSnakeCase)
 {
-    // the custom item names get mapped back to themselves when getting the title snake case list, so they are in their "normal" form already at this point
-    if(customItemNames.has(itemNameTitleSnakeCase))
-        // return Promise.resolve({url: `images/${itemNameTitleSnakeCase}.png`, isCustom: true});
-        return Promise.resolve(`images/${itemNameTitleSnakeCase}.png`); // TODO -- might want to make some map for these at some point (in the event that I want the custom images to be in multiple different folders, for whatever reason)
+    if(localImageItemNames.has(itemNameTitleSnakeCase))
 
-    // https://www.mediawiki.org/wiki/API:Imageinfo
-    // scaled down images don't work cross-site (it will work locally, but not on the hosted site)
+        return Promise.resolve(`images/${itemNameTitleSnakeCase}.png`);
+
     return fetch(`https://hayday.fandom.com/api.php?action=query&prop=imageinfo&iiprop=url&titles=File:${itemNameTitleSnakeCase}.png&format=json&origin=*`)
         .then(response => response.json())
         .then(data =>
         {
-            // console.log(data);
+
             const pages = data.query.pages;
             const pageId = Object.keys(pages)[0];
-            // for some reason, this works fine but the resultant wikia static image url yields a 404 from github pages ONLY when scaled down
-            // return pages[pageId].imageinfo[0].thumburl;
-            // return pages[pageId].imageinfo[0].thumburl.split("\/revision\/latest\/scale-to-width-down")[0];
-            return pages[pageId].imageinfo[0].url.split("\/revision\/")[0]; // or split on "\/revision\/latest", but I'm worried that something might change at some point
-            // return {url: pages[pageId].imageinfo[0].url.split("\/revision\/")[0], isCustom: false}; // or split on "\/revision\/latest", but I'm worried that something might change at some point
+
+            return pages[pageId].imageinfo[0].url.split("\/revision\/")[0];
+
         });
 }
 
@@ -1096,29 +1908,33 @@ let previousSelection;
 function updateItemLayout()
 {
     itemTable.empty();
+    normalItemsPlaceholder.prop("hidden", !!items.size || getIsInTradeView());
+    updateScreenshotEmptyState();
 
-    // must do this up-front to ensure that the price gets properly update in the event that 1) all the items get cleared out, or 2) all the visible items get cleared out (if in price calc mode with hide unselected)
     const shouldShowSelection = getIsInPriceCalculationMode();
-    if(shouldShowSelection || getIsPriceShownInScreenshot())
-        updateTotalPrice();
+    updateTotalPrice();
 
     if(!items.size)
+    {
+        rescaleScreenshotRegion();
         return;
-
+    }
 
     previousSelection = undefined;
 
     let itemsUnsorted = [...items.values()];
-    // filter out unselected if the user wants them hidden
+
     if(shouldShowSelection && shouldHideUnselectedItems)
     {
         itemsUnsorted = itemsUnsorted.filter(item => item.isSelected);
 
-        // nothing to show (since all of the items got filtered out), so we are done (also don't need to worry about updating the total price, since it always gets updated after clicking on any item's cell)
         if(!itemsUnsorted.length)
+        {
+            rescaleScreenshotRegion();
             return;
+        }
     }
-    const itemsSortedDescending = itemsUnsorted.sort((item1, item2) => item2.quantity - item1.quantity);
+    const itemsSortedDescending = itemsUnsorted.sort((item1, item2) => getQuantitySortValue(item2.quantity) - getQuantitySortValue(item1.quantity));
 
     const itemCt = itemsSortedDescending.length;
     let rowCt = Math.ceil(itemCt / itemsPerRow);
@@ -1136,7 +1952,6 @@ function updateItemLayout()
             if(shouldShowSelection && currItem.isSelected)
                 tableCell.classList.add("selected");
 
-            // must be mouseup to execute before the on click events for image, quantity, and label (since they must select the text after it has been overridden by this)
             $(tableCell).on("mouseup", {index: i, item: currItem}, (event) =>
             {
                 const item = event.data.item;
@@ -1147,10 +1962,9 @@ function updateItemLayout()
                 if(!shouldShowSelection)
                     return;
 
-
                 const index = event.data.index;
                 const [first, last] = [index, previousSelection ?? index].sort((n1, n2) => n1 - n2);
-                if(event.shiftKey) // range additive
+                if(event.shiftKey)
                 {
                     $("#itemTable td").slice(first, last + 1)
                         .each((k, elem) =>
@@ -1159,7 +1973,7 @@ function updateItemLayout()
                             setSelectedState(currItem, elem, true);
                         });
                 }
-                else if(event.altKey) // range subtractive; must use if else if... to make sure previousSelection always gets set
+                else if(event.altKey)
                 {
                     $("#itemTable td").slice(first, last + 1)
                         .each((k, elem) =>
@@ -1168,7 +1982,7 @@ function updateItemLayout()
                             setSelectedState(currItem, elem, false);
                         });
                 }
-                else if(event.ctrlKey) // range toggle
+                else if(event.ctrlKey)
                 {
                     $("#itemTable td").slice(first, last + 1)
                         .each((k, elem) =>
@@ -1177,7 +1991,7 @@ function updateItemLayout()
                             setSelectedState(currItem, elem, !currItem.isSelected);
                         });
                 }
-                else // normal selection (individual toggle)
+                else
                 {
                     const cell = event.currentTarget;
                     setSelectedState(item, cell, !item.isSelected);
@@ -1193,13 +2007,10 @@ function updateItemLayout()
             image.classList.add("itemImage");
             $(image).on("click", () =>
             {
-                // only want to focus the item name input if not in price calculation mode
-                // TODO -- maybe the name input should never be focused in general, since it never really makes sense to want to keep all the same price and quantities, but change the name (effectively duplicating the item info but with a different item name)?
+
                 if(!shouldShowSelection)
                     itemNameInput.trigger("select");
-                // need to update the layout to not include items that just got deselected; I am only putting this in the event handler for clicking on the image itself, since I want the user to be able to modify price/mult and quantity without the item temporarily disappearing
-                // this does cause the problem of clicking the border of the cell toggling the item, but not hiding it when the user wants them hidden (since this event only listens for clicking on the image itself, not anywhere in the cell)
-                // TODO -- I'm wondering if I should make clicking on quantity/price not change the state of the selection in general, though that could be a bit annoying if the user is trying to quickly select items.
+
                 else if(shouldHideUnselectedItems)
                     updateItemLayout();
             });
@@ -1213,19 +2024,17 @@ function updateItemLayout()
             });
 
             const priceLabel = document.createElement("p");
-            priceLabel.innerHTML = formatItemPriceLabel(currItem.priceOrMultiplier); // using innerHTML so that coin image is shown
+            priceLabel.innerHTML = formatItemPriceLabel(currItem.priceOrMultiplier);
             priceLabel.classList.add("label", "priceLabel");
             $(priceLabel).on("click", () =>
             {
                 itemPriceOrMultiplierInput.trigger("select");
             });
-            if(shouldHidePriceOrMultiplier)
-                priceLabel.style.display = "none";
 
             let customQuantityLabel, customPriceLabel;
             if(shouldShowSelection)
             {
-                // TODO -- I feel like some of this stuff is redundant/repeated stuff from setSelectedState() (though this stuff isn't technically in the DOM yet)
+
                 if(currItem.customQuantity !== undefined)
                 {
                     customQuantityLabel = document.createElement("p");
@@ -1237,7 +2046,6 @@ function updateItemLayout()
                         itemQuantityInput.trigger("select");
                     });
 
-                    // starts less visible since item is selected and has a custom quantity
                     if(currItem.isSelected)
                         quantityLabel.style.opacity = 0.5;
                 }
@@ -1245,7 +2053,7 @@ function updateItemLayout()
                 if(currItem.customPriceOrMultiplier !== undefined)
                 {
                     customPriceLabel = document.createElement("p");
-                    customPriceLabel.innerHTML = formatItemPriceLabel(currItem.customPriceOrMultiplier); // using innerHTML so that coin image is shown
+                    customPriceLabel.innerHTML = formatItemPriceLabel(currItem.customPriceOrMultiplier);
                     customPriceLabel.classList.add("label", "customLabel", "customPriceLabel");
                     customPriceLabel.hidden =  !currItem.isSelected;
                     $(customPriceLabel).on("click", () =>
@@ -1253,7 +2061,6 @@ function updateItemLayout()
                         itemPriceOrMultiplierInput.trigger("select");
                     });
 
-                    // starts less visible since item is selected and has a custom price/mult
                     if(currItem.isSelected)
                         priceLabel.style.opacity = 0.5;
                 }
@@ -1273,8 +2080,7 @@ function updateItemLayout()
         itemTable.append(tableRow);
     }
 
-    // I don't want to call this every time, since I feel like it slows down everything (I instead only call it when relevant things resize [items per row count, window size, bottom text])
-    // rescaleScreenshotRegion();
+    rescaleScreenshotRegion();
 }
 
 function formatItemPriceLabel(priceOrMultiplier)
@@ -1284,27 +2090,47 @@ function formatItemPriceLabel(priceOrMultiplier)
     return priceOrMultiplier + (!priceStrTrimmed.length || priceStrTrimmed.endsWith('x') ? "" : `<img class="coin" src="${coinImageUrl}">`);
 }
 
+function createImageExportTarget()
+{
+    const targetWidth = screenshotRegion.outerWidth();
+    const targetHeight = screenshotRegion.outerHeight();
+    const holder = document.createElement("div");
+    holder.style.position = "fixed";
+    holder.style.top = "0";
+    holder.style.left = "-100000px";
+    holder.style.width = `${targetWidth}px`;
+    holder.style.height = `${targetHeight}px`;
+    holder.style.pointerEvents = "none";
+
+    const target = screenshotRegion[0].cloneNode(true);
+    target.style.transform = "";
+    target.style.marginLeft = "";
+    target.style.marginRight = "";
+    target.style.marginBottom = "";
+    target.classList.add("copyExport");
+
+    holder.appendChild(target);
+    document.body.appendChild(holder);
+    holder.style.width = `${target.offsetWidth}px`;
+    holder.style.height = `${target.offsetHeight}px`;
+    return {holder, target};
+}
 
 function copyImageToClipboard()
 {
     if(isActivelyCopyingImage)
         return;
     isActivelyCopyingImage = true;
+    setCopyImageStatus("copying", "Copying image...");
 
-    const createdBy = document.createElement("p");
-    // for those of you reading this, I would appreciate if this doesn't get removed from the generated image
-    createdBy.innerText = "jjcuber.github.io/hdig"; // used to say, "Tool Created by JJCUBER"
-    createdBy.classList.add("watermark");
-    if(!$(".watermark").length) // only append if the watermark always visible on screen didn't get removed
-        screenshotRegion.append(createdBy);
-
-    copyImageLoadingWheel.prop("hidden", false); // show loading wheel
-    screenshotRegion[0].style.transform = ""; // temporarily remove screenshot region scaling so that image isn't messed up
-    itemsPerRowSlider.prop("disabled", true); // temporarily disable items per row slider
+    copyImageLoadingWheel.prop("hidden", false);
+    fitGeneratedImageBottomText();
+    const exportTarget = createImageExportTarget();
+    itemsPerRowSlider.prop("disabled", true);
 
     let screenshotBlob;
     let clipboardWrittenPromise;
-    // In order for copying an image to clipboard on iOS to work, you HAVE to effectively do it directly in the click (more accurately, pointerup) event; this means that having some promises .then()'d is not "acceptable": https://stackoverflow.com/questions/65356108/how-to-use-clipboard-api-to-write-image-to-clipboard-in-safari  AND  https://stackoverflow.com/questions/62327358/javascript-clipboard-api-safari-ios-notallowederror-message  AND  https://webkit.org/blog/10247/new-webkit-features-in-safari-13-1/
+
     if(isRunningIOS())
     {
         clipboardWrittenPromise = navigator.clipboard.write(
@@ -1313,12 +2139,11 @@ function copyImageToClipboard()
                     "image/png":
                         (async () =>
                         {
-                            // need to run a second time on iOS (it sounds like just returning the .toBlob call and .then()'ing it doesn't work based on https://github.com/bubkoo/html-to-image/issues/52#issuecomment-1255708420 , so that's why I'm awaiting it here [I don't think that would really be all so different from just returning and calling .then, but I will just do it like this since it seems to work])
-                            // TODO -- it sounds like this might also happen with safari on mac occasionally?  I might might also want to check for the browser being safari.
-                            await htmlToImage.toBlob(screenshotRegion[0]);
-                            let blob = await htmlToImage.toBlob(screenshotRegion[0]);
 
-                            screenshotBlob = blob; // I'm pretty sure this has to be done separately, otherwise iOS gets mad (probably due to using a variable of outer scope that is "tainted")
+                            await htmlToImage.toBlob(exportTarget.target);
+                            let blob = await htmlToImage.toBlob(exportTarget.target);
+
+                            screenshotBlob = blob;
 
                             return blob;
                         })()
@@ -1326,47 +2151,61 @@ function copyImageToClipboard()
             )]
         );
     }
-    else // not iOS
+    else
     {
-        // htmlToImage.toBlob(..., {canvasWidth: ..., canvasHeight: ..., width: ..., height: ...}) // there are options for canvas Width/Height, along with node's Width/Height, but they aren't really what I'm looking for (zooming out far on the page itself still modifies the scaling of everything)
-        clipboardWrittenPromise = htmlToImage.toBlob(screenshotRegion[0])
-            .then(blob => screenshotBlob = blob) // stores the blob in case the error is caught later (had to separate this since firefox doesn't have a ClipboardItem at all; the screenShot = blob code would never get parsed and cause the failed copy overly to never show)
+
+        clipboardWrittenPromise = htmlToImage.toBlob(exportTarget.target)
+            .then(blob => screenshotBlob = blob)
             .then(blob => new ClipboardItem({"image/png": blob}))
             .then(clipboardItem => navigator.clipboard.write([clipboardItem]));
     }
 
     clipboardWrittenPromise
-        .then(createSuccessfulCopyNotification)
+        .then(() =>
+        {
+            createSuccessfulCopyNotification();
+            setCopyImageStatus("success", "Image copied");
+        })
         .catch(e =>
         {
             console.log("Unable to generate image and/or copy it to clipboard --", e);
 
             createFailedCopyNotification();
+            setCopyImageStatus("error", "Unable to copy image");
 
-            // show failed copy overlay if the screenshot was successfully generated
             if(screenshotBlob)
             {
                 failedCopyOverlay.imageHolder[0].src = window.URL.createObjectURL(screenshotBlob);
 
-
-                // shows the failed copy overlay
-
                 failedCopyOverlay.overlay.prop("hidden", false);
-                // disables scrolling the main page and removes the scrollbar from the side while the settings button is focused ( https://stackoverflow.com/questions/9280258/prevent-body-scrolling-but-allow-overlay-scrolling )
+
                 $("html, body").css("overflow-y", "hidden");
-                // prevents the screenshot region from shifting over to the right due to the scrollbar now missing ( https://stackoverflow.com/questions/1417934/how-to-prevent-scrollbar-from-repositioning-web-page and https://css-tricks.com/elegant-fix-jumping-scrollbar-issue/ and https://aykevl.nl/2014/09/fix-jumping-scrollbar )
+
                 screenshotRegion.css("margin-right", "calc(100vw - 100%)");
             }
         })
         .finally(() =>
         {
-            $(createdBy).remove();
+            exportTarget.holder.remove();
             isActivelyCopyingImage = false;
 
             copyImageLoadingWheel.prop("hidden", true);
-            rescaleScreenshotRegion(); // restore screenshot region's scaling
+            rescaleScreenshotRegion();
             itemsPerRowSlider.prop("disabled", false);
         });
+}
+
+let copyImageStatusTimeout;
+function setCopyImageStatus(state, message)
+{
+    clearTimeout(copyImageStatusTimeout);
+    copyImageStatus.removeClass("copying success error");
+    copyImageStatus.addClass(state);
+    copyImageStatus.text(message);
+    $(".copyImageToClipboardButton").prop("disabled", state === "copying");
+
+    if(state !== "copying")
+        copyImageStatusTimeout = setTimeout(() => copyImageStatus.text("").removeClass(state), 4200);
 }
 
 function copyAsTextListToClipboard()
@@ -1374,21 +2213,20 @@ function copyAsTextListToClipboard()
     const itemStrs = [];
 
     const format = textListFormatInput.val();
-    const itemsSortedDescending = [...items.values()].sort((item1, item2) => item2.quantity - item1.quantity);
+    const itemsSortedDescending = [...items.values()].sort((item1, item2) => getQuantitySortValue(item2.quantity) - getQuantitySortValue(item1.quantity));
     for(let item of itemsSortedDescending)
         itemStrs.push(formatTextListItem(format, item));
 
     const textList = itemStrs.join(textListSeparatorRadios[textListSeparatorSelectedRadio].value);
     navigator.clipboard.writeText(textList)
         .then(createSuccessfulCopyNotification)
-        //.catch(e => console.log(e));
+
         .catch(console.log);
 }
 
-// maybe include Item somewhere in this function name
 function getMaxPrice(itemNameTitleSnakeCase)
 {
-    // the custom item names get mapped back to themselves when getting the title snake case list, so they are in their "normal" form already at this point
+
     if(customItemNames.has(itemNameTitleSnakeCase))
         return Promise.resolve(NaN);
 
@@ -1399,7 +2237,7 @@ function getMaxPrice(itemNameTitleSnakeCase)
             action: "parse",
             page: properPageName,
             format: "json",
-            prop: "text", // this makes it so it only fetches the text portion; I might want to swap over to the properties portion instead?  TODO -- look more into this.
+            prop: "text",
         });
 
     return fetch(url)
@@ -1407,9 +2245,9 @@ function getMaxPrice(itemNameTitleSnakeCase)
         .then(json => json.parse.text["*"])
         .then(html =>
         {
-            // const priceRange = $(html).find("aside.portable-infobox span[title='Coin(s)']").first().parent().text();
+
             const priceRange = $(html).find("aside.portable-infobox div[data-source='price']").children().text();
-            const maxPrice = parseInt(priceRange.split(" to ")[1].replaceAll(",", "")); // parseInt doesn't handle separators
+            const maxPrice = parseInt(priceRange.split(" to ")[1].replaceAll(",", ""));
             console.log(itemNameTitleSnakeCase, "max price:", maxPrice);
             return maxPrice;
         }).catch(e =>
@@ -1421,8 +2259,6 @@ function getMaxPrice(itemNameTitleSnakeCase)
         });
 }
 
-// Some hay day wiki url's have special characters and/or differ from the normal in-game names of items; the _ isn't really needed since the api used for getting the site "normalizes" the input
-// I was contemplating using the api for query with search, but I don't want to risk getting the wrong page/item price for a given item
 const specialPageNameMapping = new Map([
     ["Shepherds_Pie", "Shepherd's_Pie"],
     ["Caffe_Latte", "Caffè_Latte"],
@@ -1438,9 +2274,7 @@ async function ensureItemsHaveMaxPriceSet()
     let shouldSave = false;
     for(let item of items.values())
     {
-        // conversion to JSON using stringify makes NaN become null, so I am adding it back here; this is to ensure any calculations with this value yield NaN, instead of something like 0 (null*5 === 0)
-        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
-        // https://stackoverflow.com/questions/21896792/force-json-stringify-to-emit-nan-infinity-or-js-json-lib-that-does-so
+
         if(item.maxPrice === null)
         {
             item.maxPrice = NaN;
@@ -1452,23 +2286,13 @@ async function ensureItemsHaveMaxPriceSet()
         item.maxPrice = await getMaxPrice(item.name);
         shouldSave = true;
 
-        // updates the total price along the way if currently in price calculation mode (I'm doing this instead of only doing it once at the end so that the user can see the price updating as it gets loaded)
-        // TODO -- I don't think I need || shouldShow... here currently, though I might want/need it if I allow for persistent selections at some point
-        if(getIsInPriceCalculationMode() || getIsPriceShownInScreenshot())
+        if(getIsInPriceCalculationMode() || !getIsInTradeView())
             updateTotalPrice();
     }
 
-    // I don't foresee any issues with this randomly saving (since this async function is called synchronously to prevent the page from getting stuck while this function executes) because any modification to the items elsewhere would ... never mind
-    // this might cause issues, since it could save while in the middle of modifying an item abbreviation; if the user never "commits" these changes themself by closing out of the site (which might prevent the change event from occurring?), then some partially modified state would be saved randomly from this function; it might just be best to have this be redone each time the site loads until the user modifies something themself which forces a save all.
-    // if(shouldSave)
-        // saveAllToLocalStorage();
-
-
-    // the solution is to only save the items, since items don't carry any intermediate state (any modification to items is immediately saved to local storage)
     if(shouldSave)
         saveItemsToLocalStorage();
 }
-
 
 function formatTextListItem(format, item)
 {
@@ -1477,16 +2301,20 @@ function formatTextListItem(format, item)
         .replaceAll("{{price}}", item.priceOrMultiplier);
 }
 
-
 function calculateTotalSelectedPrice()
 {
+    if(getHasInfiniteQuantity(items.values(), false, true))
+    {
+        totalSelectedPriceMessageHolder.text("");
+        totalSelectedPriceMessageHolder.prop("hidden", true);
+        totalSelectedPriceEquationHolder.text("");
+        return undefined;
+    }
+
     let total = 0;
     let equations = [];
-    // TODO -- I should instead filter this BEFORE sorting (doesn't change anything functionally, it's just more performant that way)
-    // we go through it in quantity descending order to make the equation be in the same order as the items in the grid
-    // TODO -- now that this function gets called from updateItemLayout() whenever showing price in screenshot is enabled, I should probably be caching itemsSortedDescending
-    // NOTE: this sorts by descending so that the price gets calculated in the same order as it is displayed (this is important for both the order of the generated price equation and for the order in which warning/error messages occur and "halt" the calculation)
-    const itemsSortedDescending = [...items.values()].sort((item1, item2) => item2.quantity - item1.quantity);
+
+    const itemsSortedDescending = [...items.values()].sort((item1, item2) => getQuantitySortValue(item2.quantity) - getQuantitySortValue(item1.quantity));
     let message, isError = false;
     for(let item of itemsSortedDescending)
     {
@@ -1495,10 +2323,8 @@ function calculateTotalSelectedPrice()
 
         let [itemTotalPrice, equation, error, warning] = item.calculateTotalPrice();
 
-        // this is always done since it'll make sure that the total becomes NaN if there is an error
         total += itemTotalPrice;
 
-        // should push the current equation, even if it causes an error below (so that the user can see where in the equation it happened)
         equations.push(equation);
 
         if(error)
@@ -1514,7 +2340,6 @@ function calculateTotalSelectedPrice()
         {
             console.log(warning);
 
-            // only want to show first warning
             message ??= warning;
         }
     }
@@ -1532,94 +2357,74 @@ function calculateTotalSelectedPrice()
     return total;
 }
 
-// calculates the total price of ALL items, selected or not (does not modify the price calculation area's message holder stuff)
+function updateTotalPrice()
+{
+    if(getIsInTradeView())
+    {
+        screenshotPriceHolder.empty();
+        updatePriceCalculationDetailsVisibility();
+        return;
+    }
+
+    const totalSelectedPrice = calculateTotalSelectedPrice();
+
+    if(!priceCalculationItem)
+        return;
+
+    const isInPriceCalculationMode = getIsInPriceCalculationMode();
+    const totalPrice = isInPriceCalculationMode ? totalSelectedPrice : calculateTotalPrice();
+    const itemCount = isInPriceCalculationMode ? getSelectedItemCount() : getTotalItemCount();
+    const totalPriceHTML = items.size ? getTotalPriceHTML(totalPrice, itemCount) : "";
+    screenshotPriceHolder.html(totalPriceHTML);
+
+    updatePriceCalculationDetailsVisibility();
+}
+
+function getTotalPriceHTML(totalPrice, itemCount)
+{
+    const totalsAreUnavailable = totalPrice === undefined || itemCount === undefined || !Number.isFinite(totalPrice);
+    const totalPriceFormatted = totalsAreUnavailable ? "N/A" : getLocaleString(totalPrice);
+    const totalPriceInItems = totalsAreUnavailable ? undefined : +(totalPrice / priceCalculationItem.maxPrice).toFixed(2);
+    const totalPriceInItemsFormatted = totalsAreUnavailable ? "N/A" : getLocaleString(totalPriceInItems);
+    const itemCountFormatted = itemCount === undefined ? "N/A" : getLocaleString(itemCount);
+    return `${totalPriceFormatted}<img src="${coinImageUrl}" style="width: 14px; height: 14px;"><span style="display: inline-block; width: 10px;"></span>${totalPriceInItemsFormatted}<img src="${priceCalculationItem.url}" style="width: 14px; height: 14px;"><span style="display: inline-block; width: 10px;"></span>(${itemCountFormatted} item${itemCount === 1 ? "" : "s"})`;
+}
+
+function getIsInPriceCalculationMode()
+{
+    return isPriceCalculationModeEnabled;
+}
+
+function updatePriceCalculationDetailsVisibility()
+{
+    const shouldShowEquation = !totalSelectedPriceEquationHolder.is("[hidden]") && !!totalSelectedPriceEquationHolder.text();
+    const shouldShowMessage = !totalSelectedPriceMessageHolder.is("[hidden]") && !!totalSelectedPriceMessageHolder.text();
+    totalSelectedPriceArea.prop("hidden", getIsInTradeView() || !getIsInPriceCalculationMode() || (!shouldShowEquation && !shouldShowMessage));
+}
+
 function calculateTotalPrice()
 {
+    if(getHasInfiniteQuantity(items.values(), true))
+        return undefined;
+
     let total = 0;
-    // TODO -- I should instead filter this BEFORE sorting (doesn't change anything functionally, it's just more performant that way)
-    // we go through it in quantity descending order to make the equation be in the same order as the items in the grid
-    // TODO -- now that this function gets called from updateItemLayout() whenever showing price in screenshot is enabled, I should probably be caching itemsSortedDescending
-    // Technically, this doesn't need to sort by descending, since unlike the function which calculates total for the SELECTED price, this one is doing it for all; if an error occurs, the outcome of the values will be NaN regardless of order (the only thing that will be different is what gets logged in the console in the event of an error)
-    const itemsSortedDescending = [...items.values()].sort((item1, item2) => item2.quantity - item1.quantity);
+    const itemsSortedDescending = [...items.values()].sort((item1, item2) => getQuantitySortValue(item2.quantity) - getQuantitySortValue(item1.quantity));
     for(let item of itemsSortedDescending)
     {
-        let [itemTotalPrice, equation, error, warning] = item.calculateTotalPrice(true); // ignore custom values
+        const [itemTotalPrice, , error] = item.calculateTotalPrice(true);
+        if(error || !Number.isFinite(itemTotalPrice))
+            return undefined;
 
-        // this is always done since it'll make sure that the total becomes NaN if there is an error
         total += itemTotalPrice;
-
-        if(error)
-        {
-            console.log(error);
-            break;
-        }
     }
 
     return total;
 }
 
-// TODO -- it might be better to check whether in price calculation mode here (and/or if price is shown in the screenshot) instead of everywhere before calling this function, though that might be slower in scenarios where I have the state (of whether being in price calculation mode or not) cached.
-function updateTotalPrice()
-{
-    const totalSelectedPrice = calculateTotalSelectedPrice();
-    const totalSelectedPriceFormatted = getLocaleString(totalSelectedPrice);
-
-    // hasn't loaded yet
-    if(!priceCalculationItem)
-        return;
-
-    const totalSelectedPriceInItems = +(totalSelectedPrice / priceCalculationItem.maxPrice).toFixed(2); // the unary + converts it back to a number, removing trailing zeroes
-    const totalSelectedPriceInItemsFormatted = getLocaleString(totalSelectedPriceInItems);
-
-    const selectedCount = getSelectedItemCount();
-    const selectedCountFormatted = getLocaleString(selectedCount);
-
-    const totalSelectedPriceHTML = `${totalSelectedPriceFormatted}<img src="${coinImageUrl}" style="width: 14px; height: 14px;"><span style="display: inline-block; width: 10px;"></span>${totalSelectedPriceInItemsFormatted}<img src="${priceCalculationItem.url}" style="width: 14px; height: 14px;"><span style="display: inline-block; width: 10px;"></span>(${selectedCountFormatted} item${selectedCount === 1 ? "" : "s"})`;
-
-    const isInPriceCalculationMode = getIsInPriceCalculationMode();
-
-    if(isInPriceCalculationMode)
-        totalSelectedPriceHolder.html(totalSelectedPriceHTML);
-
-    if(getIsPriceShownInScreenshot())
-    {
-        if(!isInPriceCalculationMode && shouldShowTotalInNormalMode)
-        {
-            const totalPrice = calculateTotalPrice();
-            const totalPriceFormatted = getLocaleString(totalPrice);
-
-            const totalPriceInItems = +(totalPrice / priceCalculationItem.maxPrice).toFixed(2); // the unary + converts it back to a number, removing trailing zeroes
-            const totalPriceInItemsFormatted = getLocaleString(totalPriceInItems);
-
-            const itemCount = getTotalItemCount();
-            const itemCountFormatted = getLocaleString(itemCount);
-
-            const totalPriceHTML = `${totalPriceFormatted}<img src="${coinImageUrl}" style="width: 14px; height: 14px;"><span style="display: inline-block; width: 10px;"></span>${totalPriceInItemsFormatted}<img src="${priceCalculationItem.url}" style="width: 14px; height: 14px;"><span style="display: inline-block; width: 10px;"></span>(${itemCountFormatted} item${itemCount === 1 ? "" : "s"})`;
-            screenshotPriceHolder.html(totalPriceHTML);
-        }
-        else
-            screenshotPriceHolder.html(totalSelectedPriceHTML);
-    }
-}
-
-
-function getIsInPriceCalculationMode()
-{
-    return !totalSelectedPriceArea.is("[hidden]");
-}
-
-function getIsPriceShownInScreenshot()
-{
-    // TODO -- for this and other checkbox-related settings, should I be looking at the settings themselves for the state of things, or should I be looking at the elements that are set as visible, hidden, etc. like what I do right here?
-    return !screenshotPriceHolder.prop("hidden");
-}
-
-
 function setSelectedState(item, cell, isSelected)
 {
     item.isSelected = isSelected;
 
-    // TODO -- classList.toggle() is a thing, maybe use this instead of the if/else?  toggle can either toggle based on whether the class is on the element or based on whether the second parameter passed is true.  https://developer.mozilla.org/en-US/docs/Web/API/DOMTokenList/toggle
     if(isSelected)
         cell.classList.add("selected");
     else
@@ -1628,7 +2433,6 @@ function setSelectedState(item, cell, isSelected)
     const cellSelector = $(cell);
     cellSelector.find(".customLabel").prop("hidden", !isSelected);
 
-    // make quantity/price less visible when this item is selected and has a custom value
     cellSelector.find(".quantityLabel").css("opacity", isSelected && item.customQuantity !== undefined ? 0.5 : 1);
     cellSelector.find(".priceLabel").css("opacity", isSelected && item.customPriceOrMultiplier !== undefined ? 0.5 : 1);
 }
@@ -1649,7 +2453,6 @@ function setSelectedStateAll(items, cells, isSelected)
     }
 }
 
-
 async function prepareAllItemNames()
 {
     const itemNames = await getAllItemNames();
@@ -1661,9 +2464,8 @@ async function prepareAllItemNames()
     preparedItemNames = prepared;
 }
 
-// gotten from https://hayday.fandom.com/wiki/Supplies (if I got the images for these the same way as I did for everything else, there would be a ton of building images listed as items)
 const suppliesNames = ["Axe", "Dynamite", "Saw", "Shovel", "TNT Barrel", "Pickaxe", "Bolt", "Brick", "Duct Tape", "Hammer", "Hand Drill", "Nail", "Paint Bucket", "Plank", "Screw", "Stone Block", "Tar Bucket", "Wood Panel", "Land Deed", "Mallet", "Map Piece", "Marker Stake"];
-// extraneous "item"/image names (due to how the item names are fetched) that shouldn't be included; "Honey Mask" is a duplicate of "Honey Face Mask"
+
 const nameBlacklist = new Set(["Chicken Feed", "Cow Feed", "Pig Feed", "Sheep Feed", "Red Lure", "Green Lure", "Blue Lure", "Purple Lure", "Gold Lure", "Fishing Net", "Mystery Net", "Goat Feed", "Lobster Trap", "Duck Trap", "Honey Mask", "Field", "Apple Tree", "Shop Icon", "Coins", "Experience", "Caffè Latte", "Caffè Mocha"]);
 async function getAllItemNames()
 {
@@ -1675,7 +2477,7 @@ async function getAllItemNames()
                 action: "parse",
                 page: pageName,
                 format: "json",
-                prop: "images", // this makes it so it only fetches the images portion
+                prop: "images",
             });
 
         return fetch(url)
@@ -1688,14 +2490,12 @@ async function getAllItemNames()
     const cropNames = await fetchPortion("Crops");
     const animalProductNames = await fetchPortion("Animal_Goods");
 
-    // concat it all together and include custom item names after filtering (just in case there ends up being overlap at some point in the future)
-    return productNames.concat(cropNames, animalProductNames, suppliesNames).filter(name => !nameBlacklist.has(name)).concat([...customItemNames.values()]);
+    return productNames.concat(cropNames, animalProductNames, suppliesNames).filter(name => !nameBlacklist.has(name)).concat([...localImageItemNames.values()].map(name => name.replaceAll("_", " ")));
 }
 
 function updateFuzzyMatches(itemInput, fuzzyMatchesHolder)
 {
-    // don't want the list of matches popping up when the user is trying to select/deselect items (this only applies to the item name field, not the price calculation item field in settings)
-    // also don't want to continue if the item names haven't been prepared yet; I could easily set a flag for this case and just call this function again when the prepared items are completely set up, but that would have an extra edge case of whether the name input is still focused (ultimately, the item names should get loaded and prepared quite quickly, so the user shouldn't really run into this in practice)
+
     if((itemInput === itemNameInput && getIsInPriceCalculationMode()) || !preparedItemNames)
         return;
 
@@ -1715,20 +2515,18 @@ function updateFuzzyMatches(itemInput, fuzzyMatchesHolder)
         $(button).on("mousedown", {itemName: match.target}, (event, customParams) =>
         {
             itemInput.val(event.data.itemName);
-            // want to trigger a change immediately for the price calculation item field
-            // (I have noticed that this already gets triggered automatically if the user has manually typed anything before physically clicking on one of the buttons; however, it does not trigger if the user just continues to sequentially select multiple fuzzy matches without physically editing the text in between said clicks.  As such, this manual trigger is required even though it sometimes causes a double trigger of the change event [which shouldn't cause any issues].)
+
             if(itemInput === priceCalculationItemInput)
                 itemInput.trigger("change");
 
-            // need to wait for the mouseup event in order to refocus/reselect the input field (using .one to make sure it only happens once, and using the document as the object to ensure this occurs no matter where on the screen the mouseup happens)
-            // TODO -- I need to standardise all of my arrow functions; particularly, I need to decide whether to always include the () even for single parameter, and I need to determine whether it is a good idea to have arrow functions like this that are a single line (without {}) which calls a function (I don't know how "proper" this is, and it could easily lead to accidentally forgetting the () =>, causing it to misbehave)
-            // TODO -- should I keep the matches empty after the user selects one (until they start typing again)?
-            if(!customParams || !customParams.usedKeyboard) // don't want to do this if the user selected a match using the keyboard via 1-9,0
-                // This must be applied to every element due to how events bubble up (if you release your mouse on an item cell after clicking down on a fuzzy match, it will trigger the item's events first before bubbling/propagating up; this means that the only solution is to put the handler on every element, stop propogation, and cancel all the remaining events added via this "namespace" (.fuzzyMatchClick)).  Unfortunately, managing to click the border of an item cell on the mouseup event will end up executing that first, likely do to having same priority but having different event added order (this event is added after).
-                // TODO -- I might be able to fix this by storing the values for all 3 inputs and just modify it in my event listener below, which means that I would want to go back to using $(document) so that it has the least specificity (which means it will execute last, reverting all the values to normal).
+            if(!customParams || !customParams.usedKeyboard)
+
                 $("*").one("mouseup.fuzzyMatchClick", (e) =>
                 {
-                    if(shouldFocusQuantityOnAutocomplete && itemInput === itemNameInput)
+                    const tradeSide = getTradeSideForInput(itemInput);
+                    if(tradeSide)
+                        focusTradeQuantityInput(tradeSide);
+                    else if(shouldFocusQuantityOnAutocomplete && itemInput === itemNameInput)
                         itemQuantityInput.trigger("select");
                     else
                         itemInput.trigger("focus");
@@ -1736,13 +2534,18 @@ function updateFuzzyMatches(itemInput, fuzzyMatchesHolder)
 
                     $("*").off(".fuzzyMatchClick");
                 });
-            else if(shouldFocusQuantityOnAutocomplete && itemInput === itemNameInput)
-                itemQuantityInput.trigger("select");
+            else
+            {
+                const tradeSide = getTradeSideForInput(itemInput);
+                if(tradeSide)
+                    focusTradeQuantityInput(tradeSide);
+                else if(shouldFocusQuantityOnAutocomplete && itemInput === itemNameInput)
+                    itemQuantityInput.trigger("select");
+            }
         });
 
         const p = document.createElement("p");
         p.innerText = i === 10 ? 0 : i;
-
 
         div.appendChild(button);
         div.appendChild(p);
@@ -1753,7 +2556,6 @@ function updateFuzzyMatches(itemInput, fuzzyMatchesHolder)
     fuzzyMatchesHolder.empty();
     fuzzyMatchesHolder[0].append(...matchHTMLs);
 }
-
 
 function createSuccessfulCopyNotification()
 {
@@ -1773,20 +2575,64 @@ function createFailedCopyNotification()
     document.body.appendChild(notification);
 }
 
+function fitGeneratedImageBottomText()
+{
+    if(!bottomText?.length || bottomText.prop("hidden"))
+        return;
 
-// TODO -- I might want to eventually be rescaling the cells, though that would be a lot of work to modify all the css
+    const bottomTextElement = bottomText[0];
+    bottomTextElement.style.fontSize = "";
+
+    const screenshotStyles = getComputedStyle(screenshotRegion[0]);
+    const availableWidth = screenshotRegion[0].clientWidth -
+        parseFloat(screenshotStyles.paddingLeft) -
+        parseFloat(screenshotStyles.paddingRight);
+    if(availableWidth <= 0)
+        return;
+
+    const bottomTextStyles = getComputedStyle(bottomTextElement);
+    const maxFontSize = 50;
+    const measurementCanvas = document.createElement("canvas");
+    const context = measurementCanvas.getContext("2d");
+    context.font = `${bottomTextStyles.fontWeight} ${maxFontSize}px ${bottomTextStyles.fontFamily}`;
+
+    const longestLineWidth = bottomTextElement.innerText
+        .split("\n")
+        .reduce((width, line) => Math.max(width, context.measureText(line).width), 0);
+    const fontSize = longestLineWidth > availableWidth
+        ? Math.max(12, maxFontSize * availableWidth / longestLineWidth * 0.96)
+        : maxFontSize;
+
+    bottomTextElement.style.fontSize = `${fontSize}px`;
+}
+
 function rescaleScreenshotRegion()
 {
-    // If the user starts scrolling, zooming in, etc, don't want to rescale the screenshot region (I noticed this happening if a user on iOS starts scrolling in such a way where the address bar grows in size [triggering window resize])
+
     if(isActivelyCopyingImage)
         return;
 
-    // I take the min of these to ensure that everything always stays on screen (it takes into account both a longer bottom text and what the width would be if all items were in the table)
-    const heuristicFactor = document.documentElement.clientWidth / ((itemsPerRow + 1) * 110); // estimated width of table with all items in row filled in
-    const actualFactor = 0.9 * document.documentElement.clientWidth / screenshotRegion.width(); // actual calculated width of table (including bottom text)
+    const previewStage = $(".previewStage");
+    const previewCanvas = $(".previewCanvas");
+    const availableWidth = previewStage.width() || document.documentElement.clientWidth;
+    screenshotRegion[0].style.transform = "";
+    screenshotRegion.css({
+        "margin-left": "",
+        "margin-right": "",
+        "margin-bottom": ""
+    });
+    fitGeneratedImageBottomText();
+    const screenshotWidth = screenshotRegion.outerWidth();
+    const screenshotHeight = screenshotRegion.outerHeight();
+    const actualFactor = 0.96 * availableWidth / screenshotWidth;
 
-    const scaleFactor = Math.min(1, heuristicFactor, actualFactor); // 1 is included in the list of mins because I don't want to ever scale up, only down (if needed)
+    const scaleFactor = Math.min(1.2, actualFactor);
     screenshotRegion[0].style.transform = `scale(${scaleFactor})`;
+    previewCanvas.css({
+        "width": `${screenshotWidth * scaleFactor}px`,
+        "height": `${screenshotHeight * scaleFactor}px`
+    });
+    previewStage.css("min-height", `${Math.max(160, previewCanvas.outerHeight() + 32)}px`);
 }
 
 function getSelectedItemCount()
@@ -1795,7 +2641,13 @@ function getSelectedItemCount()
     for(let item of [...items.values()])
     {
         if(item.isSelected)
-            count += item.customQuantity ?? item.quantity;
+        {
+            const quantity = item.customQuantity ?? item.quantity;
+            if(getIsInfiniteQuantity(quantity))
+                return undefined;
+
+            count += quantity;
+        }
     }
 
     return count;
@@ -1805,13 +2657,460 @@ function getTotalItemCount()
 {
     let count = 0;
     for(let item of [...items.values()])
-        count += item.quantity; // ignore custom quantities
+    {
+        if(getIsInfiniteQuantity(item.quantity))
+            return undefined;
+
+        count += item.quantity;
+    }
 
     return count;
 }
 
+const generatedImageSolidColors = ["#171a1f", "#111827", "#132a26", "#271a30", "#16243a", "#f8fafc", "#fff8b8", "#dbeafe", "#dcfce7", "#fae8ff"];
+const generatedImageBorderColors = ["#ffffff", "#000000", "#5865f2", "#00aa77", "#ff7eb3", "#ff9f43", "#ffd43b", "#45aaf2", "#a55eea", "#ff5e57"];
+const generatedImageTextColors = ["#ffffff", "#000000", "#ff3b30", "#007aff", "#34c759", "#ffcc00", "#ff9500", "#af52de", "#ff2d55", "#64d2ff"];
+const suggestionFormEndpoint = "https://formspree.io/f/mnjrezjw";
+const generatedImageDefaultPadding = "10";
+const generatedImageMaxPadding = 10;
 
-/* -------- scripts/Settings.js -------- */
+function clampGeneratedImagePadding(value)
+{
+    const numberValue = Number(value);
+    if(!Number.isFinite(numberValue))
+        return generatedImageDefaultPadding;
+    return String(Math.min(generatedImageMaxPadding, Math.max(0, numberValue)));
+}
+
+function setSuggestionOverlayVisible(shouldShow)
+{
+    if(suggestionSubmitButton.prop("disabled"))
+        return;
+
+    suggestionOverlay.overlay.prop("hidden", !shouldShow);
+    $("html, body").css("overflow-y", shouldShow ? "hidden" : "visible");
+    screenshotRegion.css("margin-right", shouldShow ? "calc(100vw - 100%)" : "unset");
+
+    if(shouldShow)
+        suggestionDiscordInput.trigger("focus");
+    else
+        setSuggestionStatus("", "");
+}
+
+function updateSuggestionIncognitoState()
+{
+    const shouldSubmitAnonymously = suggestionIncognitoInput.prop("checked");
+    suggestionDiscordInput.prop("disabled", shouldSubmitAnonymously);
+    suggestionDiscordInput.val(shouldSubmitAnonymously ? "Incognito" : "");
+}
+
+function setSuggestionStatus(state, message)
+{
+    suggestionStatus.removeClass("sending success error");
+    if(state)
+        suggestionStatus.addClass(state);
+    suggestionStatus.text(message);
+}
+
+async function submitSuggestionForm(event)
+{
+    event.preventDefault();
+    if(suggestionSubmitButton.prop("disabled"))
+        return;
+
+    suggestionSubmitButton.prop("disabled", true);
+    suggestionLoadingWheel.prop("hidden", false);
+    setSuggestionStatus("sending", "Sending...");
+
+    const formData = new FormData(suggestionForm[0]);
+    if(suggestionIncognitoInput.prop("checked"))
+        formData.set("discordUsername", "Incognito");
+    if(!$("#suggestionScreenshotInput")[0].files.length)
+        formData.delete("screenshot");
+    formData.append("_subject", "Hay Day Trading suggestion");
+    formData.append("view", getIsInTradeView() ? "Trade" : "Buy / Sell");
+    formData.append("sheet", getCurrentModeActiveItemList());
+    formData.append("page", window.location.href);
+    formData.append("submittedAt", new Date().toISOString());
+
+    try
+    {
+        const response = await fetch(suggestionFormEndpoint, {
+            method: "POST",
+            body: formData,
+            headers: {Accept: "application/json"}
+        });
+        const result = await response.json();
+        if(!response.ok)
+            throw new Error(result.errors?.map(error => error.message).join(" ") || "Unable to send suggestion.");
+
+        suggestionForm[0].reset();
+        updateSuggestionIncognitoState();
+        setSuggestionStatus("success", "Suggestion sent successfully.");
+    }
+    catch(error)
+    {
+        console.log("Unable to send suggestion --", error);
+        setSuggestionStatus("error", "Unable to send. Please try again.");
+    }
+    finally
+    {
+        suggestionSubmitButton.prop("disabled", false);
+        suggestionLoadingWheel.prop("hidden", true);
+    }
+}
+
+function setUpStylingDrawer()
+{
+    stylingDrawerOpenButton.on("click", () => openStylingDrawer());
+    stylingDrawerCloseButton.on("click", closeStylingDrawer);
+    $(window).on("resize", syncStylingDrawerForViewport);
+    $(".mainWorkspace").on("transitionend", event =>
+    {
+        if(event.originalEvent.propertyName === "margin-right")
+            rescaleScreenshotRegion();
+    });
+    syncStylingDrawerForViewport();
+
+    const backgroundInputs = $([
+        generatedImageBackgroundModeInput[0],
+        generatedImageGradientAngleInput[0]
+    ]);
+    const styleInputs = $([
+        generatedImageBorderColorInput[0],
+        generatedImageBorderThicknessInput[0],
+        generatedImageTextColorInput[0],
+        generatedImageFontInput[0],
+        generatedImageShowBottomTextInput[0],
+        generatedImagePaddingTopInput[0],
+        generatedImagePaddingRightInput[0],
+        generatedImagePaddingBottomInput[0],
+        generatedImagePaddingLeftInput[0],
+        generatedImageShowItemQuantityInput[0],
+        generatedImageEnableInfinityInput[0],
+        generatedImageItemQuantitySizeInput[0],
+        generatedImageShowItemPriceInput[0],
+        generatedImageItemPriceSizeInput[0]
+    ]);
+    backgroundInputs.on("input", () =>
+    {
+        normalizeGeneratedImageColors();
+        applyGeneratedImageStyles();
+    });
+    backgroundInputs.on("change", () =>
+    {
+        normalizeGeneratedImageColors();
+        applyGeneratedImageStyles();
+        saveAllToLocalStorage();
+        rescaleScreenshotRegion();
+    });
+    styleInputs.on("input", applyGeneratedImageStyles);
+    styleInputs.on("change", () =>
+    {
+        applyGeneratedImageStyles();
+        saveAllToLocalStorage();
+        rescaleScreenshotRegion();
+    });
+    generatedImagePaddingResetButton.on("click", () =>
+    {
+        generatedImagePaddingTopInput.val(generatedImageDefaultPadding);
+        generatedImagePaddingRightInput.val(generatedImageDefaultPadding);
+        generatedImagePaddingBottomInput.val(generatedImageDefaultPadding);
+        generatedImagePaddingLeftInput.val(generatedImageDefaultPadding);
+        applyGeneratedImageStyles();
+        saveAllToLocalStorage();
+        rescaleScreenshotRegion();
+    });
+    generatedImagePresetInput.on("change", () =>
+    {
+        applyGeneratedImagePreset();
+        applyGeneratedImageStyles();
+        saveAllToLocalStorage();
+        rescaleScreenshotRegion();
+    });
+    $(".stylingColorSwatch").on("click", event =>
+    {
+        const swatch = $(event.currentTarget);
+        $(`#${swatch.data("target")}`).val(swatch.data("color"));
+        applyGeneratedImageStyles();
+        saveAllToLocalStorage();
+        rescaleScreenshotRegion();
+    });
+
+    generatedImageBottomTextInput.on("input", event =>
+    {
+        setGeneratedImageBottomText(event.target.value);
+    });
+    generatedImageBottomTextInput.on("change", event =>
+    {
+        setGeneratedImageBottomText(event.target.value);
+        saveAllToLocalStorage();
+        rescaleScreenshotRegion();
+    });
+
+    generatedImageCreditInput.on("input", applyGeneratedImageStyles);
+    generatedImageCreditInput.on("change", () =>
+    {
+        applyGeneratedImageStyles();
+        saveAllToLocalStorage();
+        rescaleScreenshotRegion();
+    });
+}
+
+function openStylingDrawer(focusTarget = "")
+{
+    stylingDrawer.prop("hidden", false);
+    stylingDrawer.removeClass("collapsed");
+    updateStylingDrawerToggle();
+    rescaleScreenshotRegion();
+    if(focusTarget === "bottomText")
+    {
+        generatedImageBottomTextInput[0].scrollIntoView({block: "center"});
+        generatedImageBottomTextInput.trigger("select");
+    }
+    else if(focusTarget === "advanced")
+        advancedSettingsDrawerContent[0].scrollIntoView({block: "start"});
+}
+
+function closeStylingDrawer()
+{
+    if(getIsMobileStylingDrawer())
+        stylingDrawer.prop("hidden", true);
+    else
+        stylingDrawer.toggleClass("collapsed");
+
+    updateStylingDrawerToggle();
+    rescaleScreenshotRegion();
+}
+
+function getIsMobileStylingDrawer()
+{
+    return window.matchMedia("(max-width: 760px)").matches;
+}
+
+function syncStylingDrawerForViewport()
+{
+    if(getIsMobileStylingDrawer())
+        stylingDrawer.prop("hidden", true);
+    else
+        stylingDrawer.prop("hidden", false);
+
+    updateStylingDrawerToggle();
+    rescaleScreenshotRegion();
+}
+
+function updateStylingDrawerToggle()
+{
+    const isCollapsed = stylingDrawer.hasClass("collapsed");
+    $("body").toggleClass("stylingDrawerCollapsed", isCollapsed && !getIsMobileStylingDrawer());
+    stylingDrawerCloseButton.html(`<i data-lucide="${isCollapsed ? "chevron-left" : "chevron-right"}">${isCollapsed ? "&#10094;" : "&#10095;"}</i>`);
+    stylingDrawerCloseButton.attr("title", isCollapsed ? "Expand styling options" : "Collapse styling options");
+    stylingDrawerCloseButton.attr("aria-label", isCollapsed ? "Expand styling options" : "Collapse styling options");
+    renderLucideIcons();
+}
+
+function renderLucideIcons()
+{
+    if(window.lucide)
+        window.lucide.createIcons();
+}
+
+function setGeneratedImageBottomText(text)
+{
+    bottomText[0].innerText = text;
+    generatedImageBottomTextInput.val(text);
+    fitGeneratedImageBottomText();
+}
+
+function getGeneratedImageCreditColor()
+{
+    const colorValues = [generatedImageBackgroundColorInput.val()];
+    if(generatedImageBackgroundModeInput.val() !== "solid")
+        colorValues.push(generatedImageGradientColorInput.val());
+
+    const averageLuminance = colorValues
+        .map(color => color.match(/[a-f\d]{2}/gi).map(value => parseInt(value, 16) / 255))
+        .map(([red, green, blue]) => 0.2126 * red + 0.7152 * green + 0.0722 * blue)
+        .reduce((sum, luminance) => sum + luminance, 0) / colorValues.length;
+
+    return averageLuminance > 0.62 ? "#000000" : "#ffffff";
+}
+
+function applyGeneratedImageStyles()
+{
+    const primaryColor = generatedImageBackgroundColorInput.val();
+    const backgroundMode = generatedImageBackgroundModeInput.val();
+    let background = primaryColor;
+    if(backgroundMode === "gradient")
+        background = `linear-gradient(${generatedImageGradientAngleInput.val()}deg, ${primaryColor}, ${generatedImageGradientColorInput.val()})`;
+    else if(backgroundMode === "radial")
+        background = `radial-gradient(circle, ${primaryColor}, ${generatedImageGradientColorInput.val()})`;
+
+    const bottomTextIsHidden = !generatedImageShowBottomTextInput.prop("checked");
+    generatedImagePresetLabel.prop("hidden", backgroundMode === "solid");
+    generatedImagePresetInput.prop("hidden", backgroundMode === "solid");
+    generatedImageSolidPaletteField.prop("hidden", backgroundMode !== "solid");
+    generatedImageGradientFields.prop("hidden", backgroundMode !== "gradient");
+    generatedImageGradientAngleLabel.prop("hidden", backgroundMode !== "gradient");
+    generatedImageGradientAngleInput.prop("hidden", backgroundMode !== "gradient");
+    screenshotRegion[0].style.setProperty("--screenshot-background", background);
+    screenshotRegion[0].style.setProperty("--trade-border-color", generatedImageBorderColorInput.val());
+    screenshotRegion[0].style.setProperty("--trade-border-width", `${generatedImageBorderThicknessInput.val()}px`);
+    screenshotRegion[0].style.setProperty("--screenshot-text-color", generatedImageTextColorInput.val());
+    const creditColor = getGeneratedImageCreditColor();
+    screenshotRegion[0].style.setProperty("--screenshot-credit-color", creditColor);
+    screenshotRegion[0].style.setProperty("--screenshot-credit-shadow", creditColor === "#ffffff" ? "#000000" : "#ffffff");
+    screenshotRegion[0].style.setProperty("--screenshot-font-family", generatedImageFontInput.val());
+    screenshotRegion[0].style.setProperty("--screenshot-padding-top", `${generatedImagePaddingTopInput.val()}px`);
+    screenshotRegion[0].style.setProperty("--screenshot-padding-right", `${generatedImagePaddingRightInput.val()}px`);
+    screenshotRegion[0].style.setProperty("--screenshot-padding-bottom", `${generatedImagePaddingBottomInput.val()}px`);
+    screenshotRegion[0].style.setProperty("--screenshot-padding-left", `${generatedImagePaddingLeftInput.val()}px`);
+    screenshotRegion[0].style.setProperty("--normal-item-quantity-size", `${generatedImageItemQuantitySizeInput.val()}px`);
+    screenshotRegion[0].style.setProperty("--normal-item-price-size", `${generatedImageItemPriceSizeInput.val()}px`);
+    generatedImageBorderThicknessOutput.text(`${generatedImageBorderThicknessInput.val()}px`);
+    generatedImagePaddingTopOutput.text(`${generatedImagePaddingTopInput.val()}px`);
+    generatedImagePaddingRightOutput.text(`${generatedImagePaddingRightInput.val()}px`);
+    generatedImagePaddingBottomOutput.text(`${generatedImagePaddingBottomInput.val()}px`);
+    generatedImagePaddingLeftOutput.text(`${generatedImagePaddingLeftInput.val()}px`);
+    generatedImageItemQuantitySizeOutput.text(`${generatedImageItemQuantitySizeInput.val()}px`);
+    generatedImageItemPriceSizeOutput.text(`${generatedImageItemPriceSizeInput.val()}px`);
+    bottomText.prop("hidden", bottomTextIsHidden);
+    screenshotRegion.toggleClass("bottomTextHidden", bottomTextIsHidden);
+    screenshotRegion.toggleClass("hideGeneratedItemQuantities", !generatedImageShowItemQuantityInput.prop("checked"));
+    screenshotRegion.toggleClass("hideGeneratedItemPrices", !generatedImageShowItemPriceInput.prop("checked"));
+    itemInfinityQuantityButton.prop("hidden", !generatedImageEnableInfinityInput.prop("checked"));
+    leftWatermark.text(generatedImageCreditInput.val());
+    fitGeneratedImageBottomText();
+    updateGeneratedImageColorSwatches();
+}
+
+function getGeneratedImageStoragePrefix()
+{
+    return getIsInTradeView() ? "trade" : "buySell";
+}
+
+function getGeneratedImageStorageKey(settingName)
+{
+    return `${getGeneratedImageStoragePrefix()}GeneratedImage${settingName}`;
+}
+
+function getStoredGeneratedImageSetting(settingName, legacyKey, fallback)
+{
+    return localStorage.getItem(getGeneratedImageStorageKey(settingName)) ?? localStorage.getItem(legacyKey) ?? fallback;
+}
+
+function loadGeneratedImageStylesForCurrentMode()
+{
+    const isTradeView = getIsInTradeView();
+    const bottomTextValue = getStoredGeneratedImageSetting("BottomText", "bottomText", "Partial Accepted");
+    const savedGeneratedImageTextColor = getStoredGeneratedImageSetting("TextColor", "generatedImageTextColor", "#ffffff");
+    const savedGeneratedImageCredit = getStoredGeneratedImageSetting("Credit", "generatedImageCredit", "Gamingwith3K");
+    const shouldMigrateGeneratedImageCredit = !savedGeneratedImageCredit || savedGeneratedImageCredit.toLowerCase().replaceAll(" ", "") === "madebygamingwith3k";
+
+    generatedImageBottomTextInput.val(bottomTextValue);
+    bottomText[0].innerText = bottomTextValue;
+    generatedImageBackgroundModeInput.val(getStoredGeneratedImageSetting("BackgroundMode", "generatedImageBackgroundMode", "radial"));
+    generatedImagePresetInput.val(getStoredGeneratedImageSetting("Preset", "generatedImagePreset", "blurpleGlow"));
+    if(!generatedImagePresetInput.val())
+        generatedImagePresetInput.val("blurpleGlow");
+    generatedImageBackgroundColorInput.val(getStoredGeneratedImageSetting("BackgroundColor", "generatedImageBackgroundColor", "#3f4652"));
+    generatedImageGradientColorInput.val(getStoredGeneratedImageSetting("GradientColor", "generatedImageGradientColor", "#111318"));
+    generatedImageGradientAngleInput.val("135");
+    generatedImageBorderColorInput.val(getStoredGeneratedImageSetting("BorderColor", "generatedImageBorderColor", "#ffffff"));
+    const savedBorderThickness = localStorage.getItem(getGeneratedImageStorageKey("BorderThickness"));
+    generatedImageBorderThicknessInput.val(savedBorderThickness ?? (isTradeView ? "3" : localStorage.getItem("generatedImageBorderThickness") ?? "1"));
+    generatedImageTextColorInput.val(savedGeneratedImageTextColor);
+    generatedImageFontInput.val("Georgia");
+    generatedImageShowBottomTextInput.prop("checked", getStoredGeneratedImageSetting("ShowBottomText", "generatedImageShowBottomText", "true") === "true");
+    generatedImageCreditInput.val(shouldMigrateGeneratedImageCredit ? "Gamingwith3K" : savedGeneratedImageCredit);
+    generatedImagePaddingTopInput.val(clampGeneratedImagePadding(getStoredGeneratedImageSetting("PaddingTop", "generatedImagePaddingTop", generatedImageDefaultPadding)));
+    generatedImagePaddingRightInput.val(clampGeneratedImagePadding(getStoredGeneratedImageSetting("PaddingRight", "generatedImagePaddingRight", generatedImageDefaultPadding)));
+    generatedImagePaddingBottomInput.val(clampGeneratedImagePadding(getStoredGeneratedImageSetting("PaddingBottom", "generatedImagePaddingBottom", generatedImageDefaultPadding)));
+    generatedImagePaddingLeftInput.val(clampGeneratedImagePadding(getStoredGeneratedImageSetting("PaddingLeft", "generatedImagePaddingLeft", generatedImageDefaultPadding)));
+    generatedImageShowItemQuantityInput.prop("checked", getStoredGeneratedImageSetting("ShowItemQuantity", "generatedImageShowItemQuantity", "true") === "true");
+    generatedImageEnableInfinityInput.prop("checked", getStoredGeneratedImageSetting("EnableInfinity", "generatedImageEnableInfinity", "false") === "true");
+    generatedImageItemQuantitySizeInput.val(getStoredGeneratedImageSetting("ItemQuantitySize", "generatedImageItemQuantitySize", "34"));
+    generatedImageShowItemPriceInput.prop("checked", getStoredGeneratedImageSetting("ShowItemPrice", "generatedImageShowItemPrice", "true") === "true");
+    generatedImageItemPriceSizeInput.val(getStoredGeneratedImageSetting("ItemPriceSize", "generatedImageItemPriceSize", "22"));
+    normalizeGeneratedImageColors();
+    applyGeneratedImageStyles();
+}
+
+function saveGeneratedImageStylesForCurrentMode()
+{
+    const set = (settingName, value) => localStorage.setItem(getGeneratedImageStorageKey(settingName), value);
+    set("BottomText", bottomText[0].innerText);
+    set("BackgroundMode", generatedImageBackgroundModeInput.val());
+    set("Preset", generatedImagePresetInput.val());
+    set("BackgroundColor", generatedImageBackgroundColorInput.val());
+    set("GradientColor", generatedImageGradientColorInput.val());
+    set("BorderColor", generatedImageBorderColorInput.val());
+    set("BorderThickness", generatedImageBorderThicknessInput.val());
+    set("TextColor", generatedImageTextColorInput.val());
+    set("ShowBottomText", generatedImageShowBottomTextInput.prop("checked"));
+    set("Credit", generatedImageCreditInput.val());
+    set("PaddingTop", generatedImagePaddingTopInput.val());
+    set("PaddingRight", generatedImagePaddingRightInput.val());
+    set("PaddingBottom", generatedImagePaddingBottomInput.val());
+    set("PaddingLeft", generatedImagePaddingLeftInput.val());
+    set("ShowItemQuantity", generatedImageShowItemQuantityInput.prop("checked"));
+    set("EnableInfinity", generatedImageEnableInfinityInput.prop("checked"));
+    set("ItemQuantitySize", generatedImageItemQuantitySizeInput.val());
+    set("ShowItemPrice", generatedImageShowItemPriceInput.prop("checked"));
+    set("ItemPriceSize", generatedImageItemPriceSizeInput.val());
+}
+
+function updateGeneratedImageColorSwatches()
+{
+    $(".stylingColorSwatch").each((i, element) =>
+    {
+        const swatch = $(element);
+        swatch.toggleClass("selected", $(`#${swatch.data("target")}`).val() === swatch.data("color"));
+    });
+}
+
+function normalizeGeneratedImageColors()
+{
+    if(generatedImageBackgroundModeInput.val() === "solid")
+    {
+        if(!generatedImageSolidColors.includes(generatedImageBackgroundColorInput.val()))
+            generatedImageBackgroundColorInput.val("#171a1f");
+    }
+    else
+        applyGeneratedImagePreset(false);
+
+    if(!generatedImageBorderColors.includes(generatedImageBorderColorInput.val()))
+        generatedImageBorderColorInput.val("#ffffff");
+    if(!generatedImageTextColors.includes(generatedImageTextColorInput.val()))
+        generatedImageTextColorInput.val("#ffffff");
+}
+
+function applyGeneratedImagePreset(shouldApplyMode = true)
+{
+    const presets = {
+        blurpleGlow: {mode: "radial", primary: "#3f4652", secondary: "#111318", text: "#ffffff", angle: "135"},
+        sunsetPeach: {mode: "gradient", primary: "#633544", secondary: "#1a1016", text: "#ffffff", angle: "135"},
+        mintSky: {mode: "radial", primary: "#31564c", secondary: "#0d1716", text: "#ffffff", angle: "135"},
+        berryCream: {mode: "gradient", primary: "#51385c", secondary: "#15101a", text: "#ffffff", angle: "135"},
+        morningMist: {mode: "radial", primary: "#f7fbff", secondary: "#c7d9ee", text: "#151a20", angle: "135"},
+        peachBloom: {mode: "gradient", primary: "#fff0dc", secondary: "#f4b6bd", text: "#25171a", angle: "135"},
+        mintCream: {mode: "radial", primary: "#f2fff8", secondary: "#a8dfc4", text: "#10241b", angle: "135"},
+        lavenderSky: {mode: "gradient", primary: "#f8f1ff", secondary: "#c7b8ed", text: "#211831", angle: "135"}
+    };
+    const preset = presets[generatedImagePresetInput.val()];
+    if(!preset)
+        return;
+
+    if(shouldApplyMode)
+    {
+        generatedImageBackgroundModeInput.val(preset.mode);
+        generatedImageTextColorInput.val(preset.text);
+    }
+    generatedImageBackgroundColorInput.val(preset.primary);
+    generatedImageGradientColorInput.val(preset.secondary);
+    generatedImageGradientAngleInput.val(preset.angle);
+}
+
 function setUpAbbreviationMappingTable()
 {
     for(let [abbreviation, abbreviationExpanded] of abbreviationMapping)
@@ -1841,25 +3140,19 @@ function addAbbreviationMappingTableRow(abbreviation, abbreviationExpanded)
     abbreviationExpandedInput.type = "text";
     abbreviationExpandedInput.style.maxWidth = "8em";
     abbreviationExpandedInput.value = abbreviationExpanded;
-    // abbreviationExpandedInput.dataset.previousValue = abbreviationExpanded;
 
-    // TODO -- important: not relevant here, but whenever the callback function for a jquery event returns false, this automatically causes event.stopPropagation() and event.preventDefault() to be called ( said in https://api.jquery.com/on/ and  https://stackoverflow.com/questions/2457246/jquery-click-function-exclude-children )
-
-    // make clicking the border/cell itself still focus the relevant input
-    // .target is where the event originated from/got triggered from, and .currentTarget is where the current event callback is attached to (so if the user clicks in the input field, the target is the input field, but the current target is the td, meaning I don't need to trigger focus: https://stackoverflow.com/questions/10086427/what-is-the-exact-difference-between-currenttarget-property-and-target-property )
     $(abbreviationCell).on("click", (e) =>
     {
-        // only need to focus if the cell is what was actually clicked on (target is what was clicked on [might be input or td], current target is what this callback is binded to [td])
+
         if(e.target === e.currentTarget)
             abbreviationInputSelector.trigger("focus");
     });
     $(abbreviationExpandedCell).on("click", (e) =>
     {
-        // only need to focus if the cell is what was actually clicked on (target is what was clicked on [might be input or td], current target is what this callback is binded to [td])
+
         if(e.target === e.currentTarget)
             abbreviationExpandedInputSelector.trigger("focus");
     });
-
 
     abbreviationCell.appendChild(abbreviationInput);
     abbreviationExpandedCell.appendChild(abbreviationExpandedInput);
@@ -1899,7 +3192,6 @@ function handleAbbreviationChange(event)
     ensureExtraAbbreviationMappingTableRow();
 };
 
-
 function removeAbbreviation(abbreviation)
 {
     abbreviationMapping.delete(abbreviation);
@@ -1914,9 +3206,8 @@ function updateAbbreviation(oldAbbreviation, newAbbreviation, abbreviationExpand
     if(oldAbbreviation !== newAbbreviation)
         removeAbbreviation(oldAbbreviation);
     else
-        saveAllToLocalStorage(); // removeAbbreviation() handles saving when called; no need to do it twice in that case
+        saveAllToLocalStorage();
 }
-
 
 function ensureExtraAbbreviationMappingTableRow()
 {
@@ -1927,10 +3218,9 @@ function ensureExtraAbbreviationMappingTableRow()
         addAbbreviationMappingTableRow("", "");
 }
 
-// TODO -- double check to make sure that there are no issues arising when in price calculation mode while importing
 function exportAll()
 {
-    let blob = new Blob([JSON.stringify(JSON.stringify(localStorage))], {type: "application/json"}); // need to do it twice to get double quotes properly escaped
+    let blob = new Blob([JSON.stringify(localStorage)], {type: "application/json"});
 
     let aElement = document.createElement("a");
     aElement.href = URL.createObjectURL(blob);
@@ -1944,8 +3234,10 @@ function exportAll()
 
 function importAll(jsonBlob)
 {
-    const json = JSON.parse(JSON.parse(jsonBlob));
-    // TODO -- should I be wiping local storage entirely before doing this?  (Basically, should I force all "missing" settings from this imported json to be defaulted to whatever value it should have, or should I leave those missing settings the same as how they currently are?)
+    let json = JSON.parse(jsonBlob);
+    if(typeof json === "string")
+        json = JSON.parse(json);
+
     for(let [key, value] of Object.entries(json))
         localStorage.setItem(key, value);
 
@@ -1953,94 +3245,107 @@ function importAll(jsonBlob)
     updateItemLayout();
 }
 
-// Both settings directly pertaining to item lists are excluded since it is confusing to have them also be tied to item lists.
-const excludeFromItemLists = ["activeItemList", "itemLists", "includeSettingsInItemList", "copyCurrentItemsFromItemList", "lastUsedVersion", "v2.14_backup"];
-function createItemListObject(shouldIncludeItems)
+function getItemListContentKey()
 {
-    let obj = {};
-    if(shouldIncludeSettingsInItemList)
-    {
-        // grab everything (other than excluded)
-        obj = {...localStorage};
-        for(let key of excludeFromItemLists)
-            delete obj[key];
-    }
-    // grab items if allowed
-    obj.items = shouldIncludeItems ? localStorage.items : JSON.stringify([]);
+    return getIsInTradeView() ? "tradeRows" : "items";
+}
 
+function getEmptyItemListContent()
+{
+    return JSON.stringify([]);
+}
+
+function getDefaultItemListSettings()
+{
+    const storagePrefix = getGeneratedImageStoragePrefix();
+    const styleDefaults = {
+        [`${storagePrefix}GeneratedImageBottomText`]: "Partial Accepted",
+        [`${storagePrefix}GeneratedImageBackgroundMode`]: "radial",
+        [`${storagePrefix}GeneratedImagePreset`]: "blurpleGlow",
+        [`${storagePrefix}GeneratedImageBackgroundColor`]: "#3f4652",
+        [`${storagePrefix}GeneratedImageGradientColor`]: "#111318",
+        [`${storagePrefix}GeneratedImageBorderColor`]: "#ffffff",
+        [`${storagePrefix}GeneratedImageBorderThickness`]: getIsInTradeView() ? "3" : "1",
+        [`${storagePrefix}GeneratedImageTextColor`]: "#ffffff",
+        [`${storagePrefix}GeneratedImageShowBottomText`]: "true",
+        [`${storagePrefix}GeneratedImageCredit`]: "Gamingwith3K",
+        [`${storagePrefix}GeneratedImagePaddingTop`]: generatedImageDefaultPadding,
+        [`${storagePrefix}GeneratedImagePaddingRight`]: generatedImageDefaultPadding,
+        [`${storagePrefix}GeneratedImagePaddingBottom`]: generatedImageDefaultPadding,
+        [`${storagePrefix}GeneratedImagePaddingLeft`]: generatedImageDefaultPadding,
+        [`${storagePrefix}GeneratedImageShowItemQuantity`]: "true",
+        [`${storagePrefix}GeneratedImageEnableInfinity`]: "false",
+        [`${storagePrefix}GeneratedImageItemQuantitySize`]: "34",
+        [`${storagePrefix}GeneratedImageShowItemPrice`]: "true",
+        [`${storagePrefix}GeneratedImageItemPriceSize`]: "22"
+    };
+
+    if(getIsInTradeView())
+        return {...styleDefaults, tradeRowsPerRow: "4"};
+
+    return {
+        ...styleDefaults,
+        itemsPerRow: String(Math.min(Math.floor(document.documentElement.clientWidth / 110), 8)),
+        textListSeparatorSelectedRadio: "0",
+        textListCustomSeparator: "",
+        textListFormat: "{{quantity}} {{name}} ({{price}})",
+        priceCalculationItem: "Diamond Ring",
+        defaultQuantity: "",
+        defaultPriceOrMultiplier: "5x",
+        refocusNameOnSubmit: "true",
+        focusQuantityOnAutocomplete: "true",
+        ignoreLocale: "false"
+    };
+}
+
+function getStoredItemListSettings()
+{
+    const settings = {};
+    for(let [key, fallback] of Object.entries(getDefaultItemListSettings()))
+        settings[key] = localStorage.getItem(key) ?? fallback;
+
+    return settings;
+}
+
+function createItemListObject(shouldIncludeContent, shouldIncludeSettings)
+{
+    const obj = shouldIncludeSettings ? getStoredItemListSettings() : getDefaultItemListSettings();
+    const contentKey = getItemListContentKey();
+    obj[contentKey] = shouldIncludeContent ? localStorage.getItem(contentKey) ?? getEmptyItemListContent() : getEmptyItemListContent();
     return obj;
 }
 
-function createNewItemList(name)
+function getCurrentModeItemLists()
 {
-    const obj = createItemListObject(shouldCopyCurrentItemsFromItemList || name === "Default");
+    return getIsInTradeView() ? tradeItemLists : buySellItemLists;
+}
 
+function getCurrentModeActiveItemList()
+{
+    return getIsInTradeView() ? tradeActiveItemList : buySellActiveItemList;
+}
+
+function setCurrentModeActiveItemList(name)
+{
     activeItemList = name;
-    deleteItemListButton.prop("disabled", activeItemList === "Default");
-
-    const option = new Option(activeItemList);
-    itemListDropdown.append(option);
-    $(option).prop("selected", true);
-
-    itemLists.set(activeItemList, obj);
+    if(getIsInTradeView())
+        tradeActiveItemList = name;
+    else
+        buySellActiveItemList = name;
 }
 
-function storeItemList()
+function saveItemListCollectionsToLocalStorage()
 {
-    const obj = createItemListObject(true);
-    itemLists.set(activeItemList, obj);
-
-    saveAllToLocalStorage();
+    localStorage.setItem("buySellActiveItemList", buySellActiveItemList);
+    localStorage.setItem("tradeActiveItemList", tradeActiveItemList);
+    localStorage.setItem("buySellItemLists", JSON.stringify([...buySellItemLists]));
+    localStorage.setItem("tradeItemLists", JSON.stringify([...tradeItemLists]));
 }
 
-function loadItemList()
+function refreshItemListDropdown()
 {
-    // Need to save first to make sure information on the active item list is up to date (including the data within itemLists itself).
-    saveAllToLocalStorage();
-
-    // update local storage where relevant
-    const obj = itemLists.get(activeItemList);
-    for(let key of Object.keys(obj))
-        localStorage[key] = obj[key];
-
-    // load in changes made to local storage (this also makes the Create button disabled, as desired)
-    loadAllFromLocalStorage();
-    updateItemLayout();
-}
-
-
-/* -------- scripts/Persist.js -------- */
-function loadAllFromLocalStorage()
-{
-    const sItems = localStorage.getItem("items");
-    if(sItems)
-    {
-        // converts each "object" back into an object of type Item (not sure if I really need to do this)
-        let kvps = JSON.parse(sItems);
-        for(let i in kvps)
-            kvps[i][1] = Object.assign(new Item(), kvps[i][1]);
-        items = new Map(kvps);
-    }
-
-    const sIncludeSettingsInItemList = (localStorage.getItem("includeSettingsInItemList") ?? "true") === "true"; // default to true
-    shouldIncludeSettingsInItemList = sIncludeSettingsInItemList;
-    includeSettingsInItemListCheckBox.prop("checked", sIncludeSettingsInItemList);
-
-    const sCopyCurrentItemsFromItemList = (localStorage.getItem("copyCurrentItemsFromItemList") ?? "false") === "true"; // default to false
-    shouldCopyCurrentItemsFromItemList = sCopyCurrentItemsFromItemList;
-    copyCurrentItemsFromItemListCheckBox.prop("checked", sCopyCurrentItemsFromItemList);
-
-    activeItemList = localStorage.getItem("activeItemList") ?? "Default";
-    deleteItemListButton.prop("disabled", activeItemList === "Default");
-
-    // The item and settings for the currently selected item list should already be "active" when loading the page (they were loaded when the user selected the respective item list last time, or if there is no item list yet, then what they have loaded/active is what is created as "Default").
-    // I've decided to treat it kind of as transactions; when a new item list is selected, the active main items and settings are stored into the previously selected item list, then the new item list is loaded.  This makes the most sense since it avoids issues with things related to needing to only save items to localStorage in async functions.
-    const sItemLists = localStorage.getItem("itemLists");
-    if(sItemLists)
-    {
-        let kvps = JSON.parse(sItemLists);
-        itemLists = new Map(kvps);
-    }
+    itemLists = getCurrentModeItemLists();
+    activeItemList = getCurrentModeActiveItemList();
     itemListDropdown.empty();
     for(let name of itemLists.keys())
     {
@@ -2049,74 +3354,177 @@ function loadAllFromLocalStorage()
         if(activeItemList === name)
             $(option).prop("selected", true);
     }
-    if(!itemLists.has("Default"))
-        createNewItemList("Default");
-    // The input for creating an item list starts empty; if one of the item lists is named the empty string (which is allowed), then the button needs to start disabled.
-    // createItemListButton.prop("disabled", itemLists.has(""));
-    // This should instead use the actual value of the input field since this function can be called by import all while this field is populated with something other than ""
+
+    deleteItemListButton.prop("disabled", activeItemList === "Default");
     createItemListButton.prop("disabled", itemLists.has(createItemListInput.val()));
+}
+
+function activateItemListsForCurrentMode()
+{
+    itemLists = getCurrentModeItemLists();
+    activeItemList = getCurrentModeActiveItemList();
+
+    if(!itemLists.has("Default"))
+        itemLists.set("Default", createItemListObject(true, true));
+    if(!itemLists.has(activeItemList))
+        setCurrentModeActiveItemList("Default");
+
+    refreshItemListDropdown();
+    saveItemListCollectionsToLocalStorage();
+}
+
+function createNewItemList(name)
+{
+    const shouldCreateInitialDefault = name === "Default";
+    const obj = createItemListObject(
+        shouldCreateInitialDefault || shouldCopyCurrentItemsFromItemList,
+        shouldCreateInitialDefault || shouldIncludeSettingsInItemList
+    );
+
+    const currentModeItemLists = getCurrentModeItemLists();
+    currentModeItemLists.set(name, obj);
+    itemLists = currentModeItemLists;
+    setCurrentModeActiveItemList(name);
+    refreshItemListDropdown();
+    saveItemListCollectionsToLocalStorage();
+}
+
+function storeItemList()
+{
+    saveAllToLocalStorage();
+    const currentModeItemLists = getCurrentModeItemLists();
+    currentModeItemLists.set(getCurrentModeActiveItemList(), createItemListObject(true, true));
+    itemLists = currentModeItemLists;
+    saveItemListCollectionsToLocalStorage();
+}
+
+function deleteCurrentModeItemList(name)
+{
+    const currentModeItemLists = getCurrentModeItemLists();
+    currentModeItemLists.delete(name);
+    itemLists = currentModeItemLists;
+    setCurrentModeActiveItemList("Default");
+    saveItemListCollectionsToLocalStorage();
+    loadItemList();
+}
+
+function loadItemList()
+{
+    itemLists = getCurrentModeItemLists();
+    activeItemList = getCurrentModeActiveItemList();
+    const obj = itemLists.get(activeItemList);
+    const settings = {...getDefaultItemListSettings(), ...obj};
+    for(let key of Object.keys(getDefaultItemListSettings()))
+        localStorage.setItem(key, settings[key]);
+
+    const contentKey = getItemListContentKey();
+    localStorage.setItem(contentKey, obj[contentKey] ?? getEmptyItemListContent());
+    saveItemListCollectionsToLocalStorage();
+    loadAllFromLocalStorage();
+
+    if(getIsInTradeView())
+    {
+        updateTradeDisplay();
+        updateTradeDraftSummary();
+        updateTradeSubmitButtonText();
+    }
+    else
+        updateItemLayout();
+}
+
+function loadAllFromLocalStorage()
+{
+    const sItems = localStorage.getItem("items");
+    if(sItems)
+    {
+
+        let kvps = JSON.parse(sItems);
+        for(let i in kvps)
+            kvps[i][1] = Object.assign(new Item(), kvps[i][1]);
+        items = new Map(kvps);
+    }
+    else
+        items = new Map();
+
+    const sTradeRows = localStorage.getItem("tradeRows");
+    if(sTradeRows)
+    {
+        tradeRows = JSON.parse(sTradeRows).map(row =>
+        {
+            return {
+                offerItems: row.offerItems.map(item => Object.assign(new Item(), item)),
+                wantItems: row.wantItems.map(item => Object.assign(new Item(), item)),
+                isSelected: false
+            };
+        });
+    }
+    else
+        tradeRows = [];
+
+    const sIncludeSettingsInItemList = (localStorage.getItem("includeSettingsInItemList") ?? "true") === "true";
+    shouldIncludeSettingsInItemList = sIncludeSettingsInItemList;
+    includeSettingsInItemListCheckBox.prop("checked", sIncludeSettingsInItemList);
+
+    const sCopyCurrentItemsFromItemList = (localStorage.getItem("copyCurrentItemsFromItemList") ?? "false") === "true";
+    shouldCopyCurrentItemsFromItemList = sCopyCurrentItemsFromItemList;
+    copyCurrentItemsFromItemListCheckBox.prop("checked", sCopyCurrentItemsFromItemList);
+
+    const legacyActiveItemList = localStorage.getItem("activeItemList") ?? "Default";
+    const legacyItemLists = localStorage.getItem("itemLists");
+    const savedBuySellItemLists = localStorage.getItem("buySellItemLists") ?? legacyItemLists;
+    const savedTradeItemLists = localStorage.getItem("tradeItemLists");
+    buySellActiveItemList = localStorage.getItem("buySellActiveItemList") ?? legacyActiveItemList;
+    tradeActiveItemList = localStorage.getItem("tradeActiveItemList") ?? "Default";
+    buySellItemLists = savedBuySellItemLists ? new Map(JSON.parse(savedBuySellItemLists)) : new Map();
+    tradeItemLists = savedTradeItemLists ? new Map(JSON.parse(savedTradeItemLists)) : new Map();
+    activateItemListsForCurrentMode();
 
     const sAbbreviationMapping = localStorage.getItem("abbreviationMapping");
     if(sAbbreviationMapping)
         abbreviationMapping = new Map(JSON.parse(sAbbreviationMapping));
 
-    const sBottomText = localStorage.getItem("bottomText") ?? "Partials Accepted"; // just like the abbreviations, I give a "reasonable" default
-    bottomTextSettingInput.val(sBottomText);
-    // must use innerText to preserve newline; jquery .text() doesn't (.innerText is used instead of .text() in all bottom text-related code)
-    // I could alternatively use .html(), but that would cause issues with how the user might want to format their message, such as <Partials Accepted>
-    bottomText[0].innerText = sBottomText;
+    localStorage.removeItem("generatedImageBoxColor");
+    localStorage.removeItem("generatedImageShowBoxBackground");
+    localStorage.removeItem("generatedImageGradientAngle");
+    localStorage.removeItem("generatedImageFont");
+    loadGeneratedImageStylesForCurrentMode();
 
-    // clientWidth found from https://stackoverflow.com/questions/1248081/how-to-get-the-browser-viewport-dimensions
-    const sItemsPerRow = localStorage.getItem("itemsPerRow") ?? Math.min(Math.floor(document.documentElement.clientWidth / 110), 8); // default up to 8 (however much fits; the exact calculation for the width a cell takes up is 8 + ct*100 + (ct-1)*10  AKA  110*ct - 2, but I rounded it slightly)
+    const sItemsPerRow = localStorage.getItem("itemsPerRow") ?? Math.min(Math.floor(document.documentElement.clientWidth / 110), 8);
     itemsPerRowSlider.val(sItemsPerRow);
     itemsPerRowLabel.text(sItemsPerRow);
-    itemsPerRow = parseInt(sItemsPerRow); // must "type cast" since localstorage doesn't retain type
+    itemsPerRow = parseInt(sItemsPerRow);
+    tradeRowsPerRow = Math.min(4, parseInt(localStorage.getItem("tradeRowsPerRow") ?? "4"));
 
-    textListSeparatorSelectedRadio = parseInt(localStorage.getItem("textListSeparatorSelectedRadio") ?? 0); // don't really need to do this, but it would be best to treat it as an integer/number
+    textListSeparatorSelectedRadio = parseInt(localStorage.getItem("textListSeparatorSelectedRadio") ?? 0);
     const sTextListCustomSeparator = localStorage.getItem("textListCustomSeparator") ?? "";
     textListSeparatorCustomRadio.val(sTextListCustomSeparator);
     textListCustomSeparatorInput.val(sTextListCustomSeparator);
 
-    const sTextListFormat = localStorage.getItem("textListFormat") ?? "{{quantity}} {{name}} ({{price}})"; // default format on right
+    const sTextListFormat = localStorage.getItem("textListFormat") ?? "{{quantity}} {{name}} ({{price}})";
     textListFormatInput.val(sTextListFormat);
 
-    const sPriceCalculationItem = localStorage.getItem("priceCalculationItem") ?? "Diamond Ring"; // default to rings
+    const sPriceCalculationItem = localStorage.getItem("priceCalculationItem") ?? "Diamond Ring";
     priceCalculationItemInput.val(sPriceCalculationItem);
 
-    // TODO -- finish up "Selections category and add it here; might want to combine thing right below this into this"
-
-    const sShowPriceInScreenshot = (localStorage.getItem("showPriceInScreenshot") ?? "true") === "true"; // default to true; localStorage only uses strings, so need to make sure to compare to "true" not true
-    showPriceInScreenshotCheckBox.prop("checked", sShowPriceInScreenshot);
-    screenshotPriceHolder.prop("hidden", !sShowPriceInScreenshot);
-    showTotalInNormalModeCheckBox.prop("disabled", !sShowPriceInScreenshot);
-
-    const sShowTotalInNormalMode = (localStorage.getItem("showTotalInNormalMode") ?? (sShowPriceInScreenshot ? "true" : "false")) === "true"; // default to true so long as show price in screenshot is also enabled; localStorage only uses strings, so need to make sure to compare to "true" not true
-    shouldShowTotalInNormalMode = sShowTotalInNormalMode;
-    showTotalInNormalModeCheckBox.prop("checked", sShowTotalInNormalMode);
-
-    const sHidePriceOrMultiplier = (localStorage.getItem("hidePriceOrMultiplier") ?? "false") === "true"; // default to false
-    shouldHidePriceOrMultiplier = sHidePriceOrMultiplier;
-    hidePriceOrMultiplierCheckBox.prop("checked", sHidePriceOrMultiplier);
-
-    const sDefaultQuantity = localStorage.getItem("defaultQuantity") ?? "1"; // default to 1; not parsing as int since I want to allow equations
+    const sDefaultQuantity = localStorage.getItem("defaultQuantity") ?? "";
     defaultQuantity = sDefaultQuantity;
     defaultQuantityInput.val(sDefaultQuantity);
     itemQuantityInput.val(sDefaultQuantity);
 
-    const sDefaultPriceOrMultiplier = localStorage.getItem("defaultPriceOrMultiplier") ?? "5x"; // default to 5x
+    const sDefaultPriceOrMultiplier = localStorage.getItem("defaultPriceOrMultiplier") ?? "5x";
     defaultPriceOrMultiplier = sDefaultPriceOrMultiplier;
     defaultPriceOrMultiplierInput.val(sDefaultPriceOrMultiplier);
     itemPriceOrMultiplierInput.val(sDefaultPriceOrMultiplier);
 
-    const sRefocusNameOnSubmit = (localStorage.getItem("refocusNameOnSubmit") ?? "true") === "true"; // default to true // TODO -- is this a good idea (default: true)?
+    const sRefocusNameOnSubmit = (localStorage.getItem("refocusNameOnSubmit") ?? "true") === "true";
     shouldRefocusNameOnSubmit = sRefocusNameOnSubmit;
     refocusNameOnSubmitCheckBox.prop("checked", sRefocusNameOnSubmit);
 
-    const sFocusQuantityOnAutocomplete = (localStorage.getItem("focusQuantityOnAutocomplete") ?? "true") === "true"; // default to true // TODO -- is this a good idea (default: true)?
+    const sFocusQuantityOnAutocomplete = (localStorage.getItem("focusQuantityOnAutocomplete") ?? "true") === "true";
     shouldFocusQuantityOnAutocomplete = sFocusQuantityOnAutocomplete;
     focusQuantityOnAutocompleteCheckBox.prop("checked", sFocusQuantityOnAutocomplete);
 
-    const sIgnoreLocale = (localStorage.getItem("ignoreLocale") ?? "false") === "true"; // default to false
+    const sIgnoreLocale = (localStorage.getItem("ignoreLocale") ?? "false") === "true";
     shouldIgnoreLocale = sIgnoreLocale;
     ignoreLocaleCheckBox.prop("checked", sIgnoreLocale);
 }
@@ -2124,27 +3532,20 @@ function loadAllFromLocalStorage()
 function saveAllToLocalStorage()
 {
     saveItemsToLocalStorage();
+    saveTradeRowsToLocalStorage();
 
     localStorage.setItem("includeSettingsInItemList", shouldIncludeSettingsInItemList);
     localStorage.setItem("copyCurrentItemsFromItemList", shouldCopyCurrentItemsFromItemList);
-    localStorage.setItem("activeItemList", activeItemList);
-    localStorage.setItem("itemLists", JSON.stringify([...itemLists]));
+    saveItemListCollectionsToLocalStorage();
 
     localStorage.setItem("abbreviationMapping", JSON.stringify([...abbreviationMapping]));
-    localStorage.setItem("bottomText", bottomText[0].innerText); // must use innerText for newlines to be handled properly
-    // localStorage.setItem("bottomText", bottomTextSettingInput.val()); // can just use the setting input's value instead, though maybe I should keep it consistent with the loadAll, due to the way I load it into the bottom text then into the setting
+    saveGeneratedImageStylesForCurrentMode();
     localStorage.setItem("itemsPerRow", itemsPerRow);
+    localStorage.setItem("tradeRowsPerRow", tradeRowsPerRow);
     localStorage.setItem("textListSeparatorSelectedRadio", textListSeparatorSelectedRadio);
     localStorage.setItem("textListCustomSeparator", textListCustomSeparatorInput.val());
     localStorage.setItem("textListFormat", textListFormatInput.val());
     localStorage.setItem("priceCalculationItem", priceCalculationItemInput.val());
-
-    // TODO -- finish up "Selections category and add it here; might want to combine thing right below this into this"
-
-    localStorage.setItem("showPriceInScreenshot", showPriceInScreenshotCheckBox.prop("checked")); // TODO -- I should make my use of a separate variable vs using the checkbox directly consistent
-    localStorage.setItem("showTotalInNormalMode", shouldShowTotalInNormalMode);
-
-    localStorage.setItem("hidePriceOrMultiplier", shouldHidePriceOrMultiplier);
 
     localStorage.setItem("defaultQuantity", defaultQuantity);
     localStorage.setItem("defaultPriceOrMultiplier", defaultPriceOrMultiplier);
@@ -2159,313 +3560,14 @@ function saveItemsToLocalStorage()
     localStorage.setItem("items", JSON.stringify([...items], (key, value) => Item.fieldsToOmitFromLocalStorage.has(key) ? undefined : value));
 }
 
+function saveTradeRowsToLocalStorage()
+{
+    const persistedTradeRows = tradeRows.map(row => ({offerItems: row.offerItems, wantItems: row.wantItems}));
+    localStorage.setItem("tradeRows", JSON.stringify(persistedTradeRows, (key, value) => Item.fieldsToOmitFromLocalStorage.has(key) ? undefined : value));
+}
 
-/* -------- scripts/Changelog.js -------- */
-const changelog = new Map([
-    ["v3.2", `NEW Site:
-- After much work, I have recently released the first official version of the NEW site!  I have completely rewritten EVERYTHING from scratch with a focus on having a more modern look and being easier to use on mobile.  There are also a ton of new features!  For example, you can customize the colors of everything.  I strongly recommend moving over to the new site as all future/planned features will only be implemented there.  You can check it out here:
-https://hd.jjtechdev.com/
+const changelog = new Map();
 
-Supporting:
-- This new site took a ton of my time and effort to make.  Of course, I do not expect anything in return, but if you like the new site and want to help support me in implementing even more features down the road, you can donate here:
-https://ko-fi.com/jjcuber`],
-    ["v3.1", `Bug Fix:
-- Items with a maximum possible market price (not your price, but the one from HayDay) at or above 1,000 would be incorrectly calculated.  I do not know which items are above 1k, but "Peanut Fudge" is something impacted by this.  If you have this item in your list, remove it and readd it to fix the issue!`],
-    ["v3.0", `Features:
-- Added Item Lists!  You can now seamlessly create multiple separate item lists, swap between them, duplicate them, delete them, and edit them separately.  (Please note: in the [hopefully unlikely] event that any issues arise where you suddenly lose all of your items in your current list, please note that I made this update separately back up everything.  If this occurs, please contact me [JJCUBER] and I will try to figure out what is going on [and temporarily roll back the update].)
-- Added importing and exporting of everything (settings and items/item lists).  You can now create external, local backups of everything and even share them with others (just export it then share the file with whomever you want).
-- Made selecting an item name fuzzy match (autocompletion) immediately focus the quantity textbox.  (You can disable this in settings.)
-
-Misc:
-- Gave the website an icon/"logo" (it is currently just the diamond ring from the game since my original idea couldn't be seen [due to size constraints]).
-- Some other minor code improvements and cleanup`],
-    ["v2.14", `Features:
-- Added an item for each kind of set (BEM, SEM, TEM, LEM); you can now add EM sets to your list of items!`],
-    ["v2.13", `Features:
-- Added fuzzy searching to the input field for choosing the item to calculate prices with (in settings).  (Thank you to Noahkoole for getting the ball rolling on this feature.)
-
-Misc:
-- Got rid of a misplaced period.`],
-    ["v2.12", `Features:
-- Added setting to hide price/multipliers
-- Added settings for default quantity and default price/multiplier
-- Added setting to refocus the Name field when clicking Submit (or Delete); this is mostly useful for people on mobile and/or if you prefer using those buttons over pressing enter
-- Added setting to ignore locale (when enabled, it will format the total/selected price in the bottom-left corner as 123,456.789 instead of the default for your locale/region)
-
-Bug Fixes:
-- Fixed Copy Failed popup/overlay not showing (with the generated image) on Firefox; it will still fail to copy automatically on Firefox (unless you change your settings as mentioned in Misc), but now you can see the generated image, right-click/long-press it, and copy it easily
-
-Misc:
-- If you want the copy to clipboard button to work fully automatically on Firefox, go to the site about:config then set dom.events.asyncClipboard.clipboardItem to true (copying to clipboard not working by default is not due to anything on my end; it is a default within Firefox as a "feature").  The Copy Failed popup/overlay now explains this as well.
-- Sorry for the long gap between updates.  I hope Hay Day has been going well for you all!  Happy Holidays!`],
-    ["v2.11.2", `UI Changes:
-- Made use of Locale a bit more consistent`],
-    ["v2.11.1", `UI Improvements:
-- Made the selected items count use "item" instead of "items" when exactly 1 item is selected (ensured plurality is always correct)
-
-Bug Fixes:
-- Fixed Clear All button not clearing/resetting the calculated price
-- Fixed similar issues where the item list goes from a state of having items -> being empty not clearing/resetting the calculated price
-- Made it so that total price in normal mode setting would ignore custom prices/multipliers and custom quantities specified within price calculation mode`],
-    ["v2.11", `Features:
-- Added setting to show total price in normal mode for the generated image (as in, the price of all items, regardless of whether they are selected; this defaults to being enabled so long as you have the base "Show Selected Price" setting enabled)`],
-    ["v2.10.1", `Bug Fixes:
-- Fixed some item urls (or only one?) no longer working (seemingly caused by a change in how the wiki api schema is for certain edge cases)`],
-    ["v2.10", `Features:
-- Added setting to show selected price in the generated image (defaults to being enabled)
-
-UI:
-- Made the selected price information fade in when toggled on by the setting
-
-Misc:
-- Minor code/performance improvements`],
-    ["v2.9.2", `Bug Fixes:
-- Fixed being able to scroll the page behind an overlay (this was a regression)`],
-    ["v2.9.1", `Features:
-- the total quantity of selected items is now shown when in price calculation mode
-
-UI Changes:
-- quantity and price labels now fade in/out
-
-Note:
-- Sorry for the lack of updates recently.  I have been quite busy IRL these past few weeks.  I still have plans to add tons of features over time, but development might be a bit slower than it used to be.  Regardless, feel free to join the discord (by clicking the "Contact" button) to suggest new features and/or to ask for help!
-- There is now a full text-based tutorial and a video tutorial of how to use this site (it is in the discord server, though I will eventually incorporate it into the site).`],
-    ["v2.9", `UI Changes:
-- The item grid/region now scales to fit on your screen/display without needing to scroll/zoom (this does not affect the generated image since the item grid's scale temporarily gets reset while generating the image).  It also takes into account the bottom text being wider than the item grid.
-
-Bug Fixes:
-- Preserved numerical types when loading from local storage (this didn't cause issues in any live version of the tool/site)
-- Disabled changing the number of items per row and adding/modifying/deleting items while the image is in the process of being generated
-
-Misc:
-- Removed duplicated item names with accented name variant (Caffè Latte and Caffè Mocha; the non-accented versions of the names still work, I just removed the accented variants)`],
-    ["v2.8.1", `Bug Fixes:
-- Made delete button do nothing when name input is empty (previously, it would set the quantity to 0; this isn't exactly a bug)
-- finally fixed the weird gap between fuzzy matches on mobile
-- fixed item cells getting warped when on a small screen with too many columns specified (images still maintain their aspect ratio, but they no longer scale down way below 100x100)`],
-    ["v2.8", `Features:
-- Added a delete button (outside of price calculation/selection mode; I added it since people might find it more intuitive when newer to the tool)
-- Disabled native autocomplete that could sometimes show up over top my own fuzzy autocomplete
-
-UI Changes:
-- made images that aren't a 1:1 aspect ratio not stretch (images already smaller than 100x100 also don't get blown up)
-- fixed gap between fuzzy matches on pc (still struggling to fix it on mobile for some reason)`],
-    ["v2.7", `Features:
-- Upon your first time ever using the site, the items per row count now defaults to whatever will comfortably fit on screen for the user (up to a max of 8 DEFAULT); this will not affect you if you have used the site before
-- Clicking the bottom text now (in addition to already focusing the setting to modify it) additionally scrolls to the setting to ensure that it is on screen (especially on mobile)
-
-UI Changes:
-- Made buttons and inputs look the same across all platforms
-- Added a submit button for adding/modifying items (since many people were confused by simply pressing enter to submit; that way still works, this is just another way of submitting the changes)
-- Made formatting look the same across all platforms as well
-- Made the UI/page scale up to the width of phone screens so that it isn't so tiny
-- Decreased the size of input boxes (and made it relative to the default font size being used, which is dependent on the device; iOS devices are forced to 16px, since that's what iOS requires for font size in order to not zoom in when focusing an input)
-- Made selecting a fuzzy search result/match not highlight the new text (instead putting the cursor at the end of the word(s))
-- Buttons that get wrapped to the next line (most noticeable on smaller screens, i.e. mobile phones) now have a gap between them, making it look less crowded/bad
-- Improved the layout/styling of the settings overlay (input boxes now fit properly to the dimensions of the overlay dependant on how large your device is, the abbreviation mappings table can't take up too much of the screen anymore which allows for easily scrolling to the rest of the settings on mobile)
-- Ensured that the contact overlay always has a reasonable width (since it is so small)
-
-Bug Fixes:
-- Fixed issues with the bottom text in the generated image on android
-
-Misc:
-- minor code improvements`],
-    ["v2.6", `Major Fix:
-- Copy image button (finally) works on mobile!  It should automatically copy the image just by clicking the button.  If it does not (if you still get a popup saying copy failed), please click the "Contact" button and let me know, since that shouldn't be happening.`],
-    ["v2.5", `Features:
-- Added a "Contact" overlay which has a link to the discord server I created for this tool, along with a link for creating an issue on GitHub
-
-UI Changes:
-- Added a slight shadow/outline to item images, along with changing the color when hovering (this gives a bit more contrast to items with a similar color to the background)
-- Made the minimum width for the box portion of overlays be 20% (that way, it wouldn't ever be too small)
-
-Misc:
-- A fair bit of code cleanup`],
-    ["v2.4.2", `UI Changes:
-- Made the "image failed to copy" overlay always have a width of 80% (the image would be quite tiny on some devices otherwise)`],
-    ["v2.4.1", `UI Changes:
-- Made generated image in (failed to copy) overlay rescale in size to properly fit on screen
-
-Bug Fixes:
-- Added animal byproducts to the search functionality (they were previously missing, though those items could still be added if you typed the full name out)`],
-    ["v2.4", `Features:
-- Added all the names of tools and expansion materials to the fuzzy searching list (they were always addable, but they previously weren't part of the list of terms to show as matches)
-- Made a blacklist to the fuzzy search list for some item names which aren't sellable (such as lures and feed); you can still add the items by typing the full names if you really want to, though
-
-UI Changes:
-- Made the name input no longer get focused when clicking on the image of an item while in price calculation mode (this makes it less annoying to select/deselect items on mobile, since the name input will no longer be focused with every click)
-- Made the fuzzy matches list get cleared after submitting an item
-
-Bug Fixes:
-- Fixed an obscure bug where typing 1-9,0 to select a fuzzy match would still add an event to the document, where the first click anywhere would refocus the name input`],
-    ["v2.3.2", `UI Changes:
-- When specifying a custom price or quantity for a selected item (in price calculation mode), the original value now gets dimmed out to make it more clear.
-- Outlines and shadows now look slightly different (look at Bug Fixes for more info)
-- Made the 'X'/close button in overlays stay on screen when scrolling (before it could be scrolled away from).
-
-Bug Fixes:
-- Changed how I do outlines and shadows to resolve newer iOS devices not showing said outlines and shadows in the generated image.`],
-    ["v2.3.1", `Bug Fixes:
-- Fixed images not properly loading in screenshot for iOS devices (this might be an issue for Macs as well when using safari, but I have no way of testing it; let me know if you run into this issue)
-- Fixed outlines not showing in screenshot for iOS devices
-
-UI Changes:
-- Changed the color and outlines of price/multiplier and quantity labels (they should be more readable now)
-- Made the list of matches fade in when there previously weren't any/when the input is focused (it fades in only when going from a state of being empty -> non-empty)
-
-Misc:
-- Cleaned up and organized css`],
-    ["v2.3", `Features:
-- Added toggle to hide unselected items (when in price calculation mode)
-- Added a (green) notification when something got successfully copied (image/text of item list), coupled with a nice animation (more about the animation in UI Changes)
-- Added a (red) notification when something fails to get copied (same animation as ^)
-- Made clicking the small border around any of the inputs in the abbreviation mappings table (within settings) focus the input itself (in case you are unlucky enough to manage to click just outside of the input)
-- Added a loading wheel animation while in the process of generating and copying the image of the grid of items
-- Added an overlay which shows when the image is successfully generated but fails to copy to the clipboard (usually due to the page not having focus or the user being on a mobile device); this overlay presents the generated image, allowing the user to still copy/save it by right clicking/long-pressing (depending on what device they are using)
-
-UI Changes:
-- Disabled fuzzy search/matches popup while in price calculation mode (there wasn't any need for it to be popping up while selecting/deselecting items)
-- Animations and transitions GALORE (mentioned throughout the remaining bullet points)
-- Made notifications fade and slide in/out (they slide in/out from the top of the screen and stay there for a few seconds)
-- Added smooth transitions/animations to the outlines of items in the table/list, price/quantity labels, and more (primarily relating to the color of the outlines)
-- Improved the look of the outlines of elements (such as buttons and inputs)
-- Made all toggle-related buttons have a red outline while "activated" (only when they are not disabled; for example, if showing the equation for the total price is enabled, but price calculation mode is not currently active, the button for enabling the showing of the equation won't have a red outline)
-- Made overlays fade in when opened
-- Made price calculation mode's tooltip fade in when enabling said mode
-- Added some nice animations when modifying the item table in any way (adding items, removing items, editing items, resizing the table) to make it feel more "alive"/"responsive"
-- Animation when focusing any input field (of the background color turning yellow); this helps with seeing what got focused and/or whether something is focused
-- Added a little animation when clicking buttons (makes it feel more responsive and makes it clear that the button is actually being clicked)
-- Added transition when buttons change state between being enabled <-> disabled (fades in/out instead of instantly changing)
-- The entire total price calculation area fades in when enabled
-- Whenever a warning/error message appears in the price calculation area, it will fade in (if there wasn't previously a warning/error on screen)
-- Same as ^ for the equation for the total price
-- Reordered the price calculation area slightly to have the message at the very bottom instead of before the equation
-- Made the price calculation area's message transition/animate the change in color when going between warning <-> error
-- Made the item table not shift around slightly when opening/closing overlays (settings, changelog, etc.) in the (probably rare) case where you have bottom text long enough to wrap around
-- Made the items per row slider more vertically centered
-
-Misc:
-- Some code cleanup`],
-    ["v2.2", `Features:
-- Added fuzzy searching/matching for item names, making it much easier and faster to input the name of a given item.  Fuzzy searching basically allows you to skip letters and even have them partially out of order, while still finding the "best" matches.  Give it a try, and you will see what I mean (it also shows visually what part of the matched terms it is "selecting").
-- In addition to clicking from the list of matches, you can input 1-9, 0 while typing a name to select that numbered match to fill in.
-
-UI Changes:
-- The grid now centers relative to the bottom text when the bottom text is wider than the grid.  (I initially made the grid just center completely on the page, but that would cause items to shift to the left/right visually when adding/removing items from the first row, which would be a bit annoying.)
-
-Misc:
-- Split the js file into multiple separate purposeful files/file names.  (Also wrote a script which compiles all the js files into a single one for actual use by github pages.)`],
-    ["v2.1", `Features:
-- Popups now close when you click "out of them" (when you click the semi-transparent background); this makes it easier to exit without scrolling back up to the x button (also working on getting that x button to stay put at some point)
-
-UI Changes:
-- Changed color of outline when hovering over selected items (to make it easier to tell when you are hovering over something that is also selected)
-- Made price/multiplier labels be pure black with no outline (more readable)
-
-Misc.:
-- Removed use of some deprecated jQuery functions`],
-    ["v2.0", `MAJOR (Overview):
-- A Price Calculation Mode was added, which supports a ton of stuff (multiple ways to quickly select/deselect individual/ranges of items, custom quantities and prices/multipliers for selection mode, automatic price calculation of selected items, a way to see the equation used for the calculation, and more)
-- improved UI (in the way of making it clear what is clickable, what is happening, etc.)
-- setting additions and improvements (allowing more customizability)
-
-All Features Added:
-- Added fetching items' max prices (retroactively applies to items that were added in an older version)
-- Added support for multiline bottom text
-- Added parsing and calculating of item's total price
-- Added setting for custom text list format (it supports the special variables {{name}}, {{quantity}}, and {{price}}; it also supports being multiline)
-- Added a price calculation mode (which support calculating total price, along with selecting items, custom quantities, custom prices/multipliers, etc.)
-- Added clear selection button
-- Selection state of items is maintained even outside of price calculation mode until the site is reloaded (which allows for going out of price calculation mode, adding an item, then going back in without losing your selections)
-- Added select all button
-- Added total price calculation for selected items (in coins and items, such as rings)
-- Added setting for what item to use for price calculation (for example, chaps or dresses in place of rings)
-- Added custom quantity and price for selected items
-- Added button to reset/wipe custom quantity and prices
-- Added support for starting a quantity of an item with an operator (such as +,-,*,/) to scale the current quantity accordingly (if the item isn't already added, the quantity will be calculated like normal, which allows for putting some equation like -2+5*3^4/...).  If in price calculation mode and you have a custom quantity, that value will be used for the calculation instead.
-- Added a button to toggle visibility of the equation used for calculating the total price in price calculation mode
-- Made empty custom quantity/multiplier default back to the normal (full) value
-- Empty quantity now gets treated as a 0 (now you can simply wipe out the quantity field of an item to remove it without having to type 0, -1, etc.)
-- Made custom quantity reset to normal if the normal value gets updated (outside of price calculation mode) to go from being > the custom value to being <= the custom value (keeps the custom quantity upper-bounded by the normal quantity if it was previously upper-bounded by said normal quantity)
-- Added subtract selected quantities button (custom quantities get subtracted from the normal quantity; any item without a custom quantity or which falls beneath a quantity of 1 gets automatically removed)
-- Added delete selected button
-- Added multiple ways to select items in price calculation mode: Click = individual toggle, Shift+Click = range additive, Alt+Click = range subtractive, Ctrl+Click = range toggle (invert)
-
-UI Changes:
-- Made hovering over quantity or price/multiplier highlight it with a different color (showing that it's clickable)
-- Made all buttons show the cursor pointer when hovered over
-- Improved spacing between buttons
-- Made name input turn red when an invalid item name is submitted
-- Added warning and error information for price calculation to the UI (warnings for items without a price/multiplier getting defaulted, and errors for items that aren't sellable, such as cow or pig)
-- Added a way to see the equation used for calculating the total price in price calculation mode
-- Added blurb describing the keybinds of price calculation mode (only shows when in price calculation mode); "Click = individual toggle, Shift+Click = range additive, Alt+Click = range subtractive, Ctrl+Click = range toggle (invert)"
-- Made the total price update along the way while item prices are being loaded (only relevant if you have items saved from before this version which need to have their prices fetched)
-- Added a changelog (it pops up automatically when first launching the site ONLY when it detects that the site has updated to a new version since the last time you opened it; it won't keep pestering you)
-
-Bug Fixes:
-- Fixed empty price/multipliers still including the coin image by itself
-- Fixed settings background not covering the whole screen when scrolled (also fixed being able to scroll the main page while in the setting popup)
-- Fixed spamming of copy image to clipboard button sometimes causing temporary repeated watermarks
-- Fixed having a long bottom text with only 1-2 items cutting off the text in the generated screenshot`],
-    ["v1.5.2", `Fixed:
-- item name "Frutti di Mare Pizza" not working
-
-Notes:
-- I have some major features being worked on right now (which aren't ready to commit to here yet), but I wanted to get this fix out quickly.
-- To my knowledge, all product names should be properly working now (other than lures which are on the products page for hay day, https://hayday.fandom.com/wiki/Products , but they can't be traded anyway); I still have to do more sleuthing to make sure there aren't any other "non product" items with messed up names.`],
-    ["v1.5.1", `Fixed:
-- item names containing the word "and" not working`],
-    ["v1.5", `Features Added:
-- Made bottom text clickable, allowing you to more quickly modify what it says
-- Added clear all button (with a confirmation popup), which removes all items currently added
-
-UI Changes:
-- Added some text describing the ability to click an image, quantity, or price to populate all the fields and autofocus the respective one (also mentioned the new ability to click the bottom text to modify it)
-
-Misc. Improvements:
-- Added some code to aid in preventing cached versions of the css/js files from being used whenever the site has recently been updated`],
-    ["v1.4", `UI Changes:
-- Improved the look of the site
-- Removed underlines
-- Made font (Arial) consistent site-wide
-- Moved notes to be part of headers (h2) and made said notes smaller than the rest of the text in the header
-- Added special name mapping to BLT Salad so that it would be addable as an item (special name mappings have to be made for names that have abbreviations as a word; the current ones I could find are TNT and BLT)
-
-Bug Fixes:
-- Fixed #4 (I sorted the items properly, then proceeded to use the original items object instead of the temporary sorted one)
-
-Whenever I update, you might need to clear cookies on the site to remove the old cached files.  For now, I would recommend clearing cookies, then modifying a setting/item BEFORE refreshing the page so that it all gets stored back into local storage and you don't lose anything.  I am planning on making an import/export system, along with some sort of way to notify someone if any of the cached files are outdated.`],
-    ["v1.3", `Features Added:
-- Copy to clipboard items as a text list
-- Customizable separators of the text list (With 2 default options of newline and comma; the third option allows you to type any string for the separator)
-
-Changes:
-- Improved UI layout (particularly for the settings popup)
-
-Bugs Fixed:
-- #2`],
-    ["v1.2", `Forgot to manually change the size of the coin image (in relation to #1).`],
-    ["v1.1", `Fixes the weird issue with images yielding a 404 only on github pages.`],
-    ["v1.0", `Main features are:
-- creating a grid of item listings
-- selecting items to modify their information (set quantity to 0 to remove)
-- clicking on the image portion vs the quantity portion vs the price portion of an item focuses and highlights the text of said respective textbox
-- changeable number of items per row
-- modifiable bottom text
-- modifiable abbreviations
-- persistent settings/state (refreshing retains your layout, abbreviations, etc.)
-- single-click image/screenshot creation (copies it to clipboard to allow quickly pasting)
-- auto sorting of items by descending quantity
-
-
-Some future features:
-- Generation of text/list form of items (mostly finished, but not a part of the version)
-- More settings (change sort directions/type, manual import/export of items, abbreviations, settings, etc.)
-- A few other small QOL ideas that might not be added
-
-
-There might be a bug or two since I added a lot of features today (in order to release v1.0 ASAP); sorry for any inconveniences.`]
-]);
 function setUpChangelog()
 {
     let changes = [];
@@ -2486,14 +3588,15 @@ function setUpChangelog()
         changes.push(changeHolder);
     }
 
-    // effectively interweaves an hr element between each change div
     changelogOverlay.inner.append(changes.flatMap(elem => [elem, document.createElement("hr")]).slice(0, -1));
 }
 
-// TODO -- I might want to put all of the local storage-related calls in wrapper functions in Persist.js
 function handleVersionChange()
 {
     const latestVersion = changelog.keys().next().value;
+    if(latestVersion === undefined)
+        return;
+
     const sLastUsedVersion = localStorage.getItem("lastUsedVersion");
 
     if(sLastUsedVersion === latestVersion)
@@ -2507,4 +3610,3 @@ function handleVersionChange()
 
     changelogOverlay.showButton.trigger("click");
 }
-
