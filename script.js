@@ -3483,6 +3483,7 @@ function loadAllFromLocalStorage()
     tradeActiveItemList = localStorage.getItem("tradeActiveItemList") ?? "Default";
     buySellItemLists = savedBuySellItemLists ? new Map(JSON.parse(savedBuySellItemLists)) : new Map();
     tradeItemLists = savedTradeItemLists ? new Map(JSON.parse(savedTradeItemLists)) : new Map();
+    syncTradeRowsToActiveItemList(sTradeRows);
     activateItemListsForCurrentMode();
 
     const sAbbreviationMapping = localStorage.getItem("abbreviationMapping");
@@ -3569,7 +3570,18 @@ function saveItemsToLocalStorage()
 function saveTradeRowsToLocalStorage()
 {
     const persistedTradeRows = tradeRows.map(row => ({offerItems: row.offerItems, wantItems: row.wantItems}));
-    localStorage.setItem("tradeRows", JSON.stringify(persistedTradeRows, (key, value) => Item.fieldsToOmitFromLocalStorage.has(key) ? undefined : value));
+    const serializedTradeRows = JSON.stringify(persistedTradeRows, (key, value) => Item.fieldsToOmitFromLocalStorage.has(key) ? undefined : value);
+    localStorage.setItem("tradeRows", serializedTradeRows);
+    syncTradeRowsToActiveItemList(serializedTradeRows);
+    saveItemListCollectionsToLocalStorage();
+}
+
+function syncTradeRowsToActiveItemList(serializedTradeRows)
+{
+    if(serializedTradeRows === null || !tradeItemLists.has(tradeActiveItemList))
+        return;
+
+    tradeItemLists.get(tradeActiveItemList).tradeRows = serializedTradeRows;
 }
 
 const changelog = new Map();
