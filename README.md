@@ -106,7 +106,7 @@ Clearing browser storage or using private browsing may remove locally saved data
 
 Standard item names, images, and maximum prices are fetched on demand from the [Hay Day Wiki](https://hayday.fandom.com/) API. A small number of custom or newly added items use local PNG assets included in this repository.
 
-An internet connection is therefore required for CDN libraries and Hay Day Wiki product data that is not bundled locally.
+Previously loaded product images and Hay Day Wiki responses are cached by a service worker for faster repeat visits. An internet connection is still required for the first load of CDN libraries and product data that is not bundled locally.
 
 ## Running Locally
 
@@ -119,23 +119,11 @@ This is a static HTML, CSS, and JavaScript project. No build step is required.
    python -m http.server 8000
    ```
 
+Please make sure to give credit to Gamingwith3K if you are going to modify the website for personal use.
+
 3. Open `http://localhost:8000`.
 
 Using a local server is recommended because clipboard APIs and remote data requests may not work when `index.html` is opened directly from the filesystem.
-
-## Project Structure
-
-```text
-.
-|-- index.html          Main application markup
-|-- style.css           Application and generated-image styles
-|-- script.js           Bundled browser script
-|-- scripts/            Source JavaScript modules
-|-- images/             Local product and interface assets
-`-- docs/images/        README visuals
-```
-
-When changing source files in `scripts/`, rebuild `script.js` by concatenating the modules in the same order used by the project.
 
 ## Credits
 

@@ -1606,6 +1606,11 @@ body.tradeView .quantitySymbolButton
     margin-top: 8px;
 }
 
+.entryActionGroup
+{
+    display: contents;
+}
+
 .stylingDrawerMobileToolbar
 {
     display: none;
@@ -2158,31 +2163,40 @@ body:not(.tradeView) #screenshotRegion.copyExport
 {
     :root
     {
-        --app-header-height: 66px;
+        --app-header-height: 94px;
+    }
+
+    html,
+    body
+    {
+        overflow-x: hidden;
     }
 
     .appHeader
     {
-        justify-content: flex-start;
-        padding: 10px 14px;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 8px 12px 27px;
     }
 
     .appBrand
     {
+        width: 100%;
+        justify-content: center;
         gap: 9px;
     }
 
     .appBrandIcon
     {
-        width: 45px;
-        height: 45px;
-        border-radius: 12px;
-        clip-path: inset(0 round 12px);
+        width: 43px;
+        height: 43px;
+        border-radius: 11px;
+        clip-path: inset(0 round 11px);
     }
 
     .appBrand h1
     {
-        font-size: 19px;
+        font-size: 18px;
     }
 
     .appBrand p
@@ -2192,9 +2206,13 @@ body:not(.tradeView) #screenshotRegion.copyExport
 
     .appHeaderCredit
     {
-        right: 12px;
-        max-width: 96px;
-        font-size: 11px;
+        top: auto;
+        right: 13px;
+        bottom: 8px;
+        max-width: none;
+        transform: none;
+        font-size: 10px;
+        line-height: 1.1;
         text-align: right;
     }
 
@@ -2210,13 +2228,52 @@ body:not(.tradeView) #screenshotRegion.copyExport
     {
         align-items: stretch;
         flex-direction: column;
+        gap: 10px;
+    }
+
+    .modeSwitch
+    {
+        display: grid;
+        width: 100%;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .modeSwitch button
+    {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid #fff;
+        font-size: 14px;
+    }
+
+    .workspaceUtilities
+    {
+        position: static;
+        display: grid;
+        width: 100%;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 42px;
         gap: 8px;
     }
 
-    .modeSwitch,
-    .workspaceUtilities
+    .workspaceUtilities button,
+    .workspaceUtilities .buttonLink
     {
+        min-width: 0;
+        min-height: 40px;
         justify-content: center;
+        padding: 8px 10px;
+    }
+
+    .workspaceUtilities .originalSiteLink
+    {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px;
+    }
+
+    .workspaceUtilities .originalSiteLink span
+    {
+        display: none;
     }
 
     .editorPanel
@@ -2226,9 +2283,255 @@ body:not(.tradeView) #screenshotRegion.copyExport
 
     .editorPanelHeader
     {
-        align-items: flex-start;
+        align-items: center;
         flex-direction: column;
         gap: 9px;
+    }
+
+    #itemEditorHeading
+    {
+        width: 100%;
+        text-align: center;
+    }
+
+    .rowCountControl
+    {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .entryLine,
+    .actionToolbar,
+    .tradeActionLine,
+    .tradeSelectionToolbar
+    {
+        overflow: visible;
+        flex-wrap: wrap;
+        white-space: normal;
+    }
+
+    #normalItemEntryArea
+    {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px 8px;
+    }
+
+    #normalItemEntryArea > div:has(#itemNameInput)
+    {
+        min-width: 0;
+        grid-column: 2 / 4;
+    }
+
+    #itemNameInput,
+    #itemPriceOrMultiplierInput
+    {
+        width: 100% !important;
+    }
+
+    #itemQuantityInput
+    {
+        width: 100% !important;
+    }
+
+    #normalItemEntryArea label[for="itemQuantityInput"],
+    #normalItemEntryArea label[for="itemPriceOrMultiplierInput"]
+    {
+        grid-column: 1;
+    }
+
+    #itemQuantityInput
+    {
+        grid-column: 2;
+    }
+
+    #itemPriceOrMultiplierInput
+    {
+        grid-column: 2 / 4;
+    }
+
+    #normalItemEntryArea .entryActionGroup
+    {
+        display: grid;
+        grid-column: 1 / 4;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    #normalItemEntryArea .entryActionGroup button
+    {
+        width: 100%;
+        min-width: 0;
+        justify-content: center;
+        margin-left: 0 !important;
+    }
+
+    .actionToolbar,
+    .tradeActionLine,
+    .tradeSelectionToolbar
+    {
+        display: grid;
+        gap: 8px;
+    }
+
+    .actionToolbar button,
+    .tradeActionLine button,
+    .tradeSelectionToolbar button
+    {
+        width: 100%;
+        min-width: 0;
+        min-height: 42px;
+        height: 100%;
+        justify-content: center;
+        white-space: normal;
+    }
+
+    .editorPanel > .actionToolbar
+    {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .priceCalculationToolbars .actionToolbar:first-child
+    {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #priceCalculationToggleButton
+    {
+        grid-column: 1 / -1;
+    }
+
+    .priceCalculationToolbars .actionToolbar:first-child:not(:has(.disableOutsidePriceCalculationMode:not(:disabled)))
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .priceCalculationToolbars .actionToolbar:last-child
+    {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .priceCalculationToolbars .actionToolbar:last-child > :last-child
+    {
+        grid-column: 1 / -1;
+    }
+
+    .tradeActionLine
+    {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .tradeSelectionToolbar
+    {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .tradeSelectionToolbar:has(#tradeSelectionToggleButton)
+    {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #tradeSelectionToggleButton
+    {
+        grid-column: 1 / -1;
+    }
+
+    .tradeSelectionButtonLabel
+    {
+        line-height: 1.15;
+        text-align: center;
+    }
+
+    .copyImageLoadingWheel[hidden],
+    .copyImageStatus:empty
+    {
+        display: none;
+    }
+
+    .copyImageStatus:not(:empty)
+    {
+        grid-column: 1 / -1;
+        justify-self: center;
+    }
+
+    .priceCalculationToolbars .actionToolbar
+    {
+        min-height: 0;
+    }
+
+    .disableOutsidePriceCalculationMode:disabled
+    {
+        display: none !important;
+    }
+
+    .tradeInputLine
+    {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px 8px;
+        overflow: visible;
+        white-space: normal;
+    }
+
+    .tradeInputLine > div:has(#tradeOfferNameInput),
+    .tradeInputLine > div:has(#tradeWantNameInput)
+    {
+        min-width: 0;
+        grid-column: 2 / 4;
+    }
+
+    body.tradeView #tradeOfferNameInput,
+    body.tradeView #tradeWantNameInput,
+    #tradeOfferQuantityInput,
+    #tradeWantQuantityInput
+    {
+        width: 100% !important;
+    }
+
+    .tradeInputLine label[for="tradeOfferQuantityInput"],
+    .tradeInputLine label[for="tradeWantQuantityInput"]
+    {
+        grid-column: 1;
+    }
+
+    #tradeOfferQuantityInput,
+    #tradeWantQuantityInput
+    {
+        grid-column: 2 / 4;
+    }
+
+    .tradeFormDivider
+    {
+        grid-column: 1 / 4;
+        text-align: center;
+    }
+
+    .tradeInputLine .entryActionGroup
+    {
+        display: grid;
+        grid-column: 1 / 4;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .tradeInputLine .entryActionGroup:not(:has(#tradeCancelEditButton:not([hidden])))
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .tradeInputLine .entryActionGroup button
+    {
+        width: 100%;
+        min-width: 0;
+        justify-content: center;
+    }
+
+    #tradeDraftSummary:not([hidden])
+    {
+        margin: 4px 0 0;
+        white-space: normal;
     }
 
     #stylingDrawer
@@ -2246,17 +2549,28 @@ body:not(.tradeView) #screenshotRegion.copyExport
 
     #stylingDrawerOpenButton
     {
-        display: inline-block;
-    }
-
-    .stylingDrawerMobileToolbar
-    {
-        display: flex;
+        display: inline-flex;
     }
 
     .previewStage
     {
-        justify-content: flex-start;
+        min-height: 250px;
+        justify-content: center;
+        overflow: hidden;
+        padding: 14px 0 0;
+    }
+
+    .previewCanvas
+    {
+        max-width: 100%;
+    }
+
+    input[type="text"],
+    body.tradeView input[type="text"],
+    textarea,
+    select
+    {
+        font-size: 16px;
     }
 
 }

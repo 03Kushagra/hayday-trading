@@ -9,6 +9,10 @@
         <title>Hay Day Trading</title>
 
         <link rel="icon" type="image/png" href="images/hayday-trading-mark.png">
+        <script>
+            if("serviceWorker" in navigator && location.protocol !== "file:")
+                navigator.serviceWorker.register("sw.js").catch(error => console.log("Unable to register image cache --", error));
+        </script>
 
         <script src="https://code.jquery.com/jquery-3.6.4.js" integrity="sha384-SCPawFAkxFucxzK6X4Gpg3lmBZqjjmM8ghZCRH8hW4C+k4wCVXFd862J1juShkQ7" crossorigin="anonymous"></script>
 
@@ -20,9 +24,9 @@
 
         <script src="https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js"></script>
 
-        <link rel="stylesheet" href="style.css?v=5.44">
+        <link rel="stylesheet" href="style.css?v=5.52">
 
-        <script src="script.js?v=5.47"></script>
+        <script src="script.js?v=5.48"></script>
     </head>
     <body>
         <header class="appHeader">
@@ -45,7 +49,8 @@
                     </div>
                     <div class="workspaceUtilities">
                         <button id="suggestionOverlayShowButton"><i data-lucide="message-square-plus"></i>Suggestion</button>
-                        <a class="buttonLink" href="https://jjcuber.github.io/HayDayImageGeneratorSite/" target="_blank" rel="noopener noreferrer"><i data-lucide="external-link"></i>Original JJCUBER</a>
+                        <button id="stylingDrawerOpenButton"><i data-lucide="sliders-horizontal"></i><span>Image Styling</span></button>
+                        <a class="buttonLink originalSiteLink" href="https://jjcuber.github.io/HayDayImageGeneratorSite/" target="_blank" rel="noopener noreferrer" aria-label="Open Original JJCUBER" title="Original JJCUBER"><i data-lucide="external-link"></i><span>Original JJCUBER</span></a>
                     </div>
                 </section>
 
@@ -79,8 +84,10 @@
             <label for="itemPriceOrMultiplierInput">Price/Multiplier</label>
             <input type="text" id="itemPriceOrMultiplierInput" style="width: 3em;">
 
-            <button id="itemSubmitButton" style="margin-left: 10px;"><i data-lucide="plus"></i>Submit</button>
-            <button id="itemDeleteButton" class="disableInPriceCalculationMode"><i data-lucide="trash-2"></i>Delete</button>
+            <div class="entryActionGroup">
+                <button id="itemSubmitButton" style="margin-left: 10px;"><i data-lucide="plus"></i>Submit</button>
+                <button id="itemDeleteButton" class="disableInPriceCalculationMode"><i data-lucide="trash-2"></i>Delete</button>
+            </div>
                     </div>
 
                     <div id="tradeItemEntryArea" class="entryLine" hidden>
@@ -104,8 +111,10 @@
 
             <label for="tradeWantQuantityInput">Quantity</label>
             <input type="text" id="tradeWantQuantityInput" style="width: 4em;">
-            <button id="tradeSubmitButton"><i data-lucide="save"></i>Save Trade Row</button>
-            <button id="tradeCancelEditButton" hidden>Cancel Edit</button>
+            <div class="entryActionGroup">
+                <button id="tradeSubmitButton"><i data-lucide="save"></i>Save Trade Row</button>
+                <button id="tradeCancelEditButton" hidden>Cancel Edit</button>
+            </div>
             </div>
 
             <div id="tradeDraftSummary" hidden></div>
@@ -124,7 +133,7 @@
             </div>
 
             <div class="tradeSelectionToolbar">
-            <button id="tradeSelectionToggleButton"><i data-lucide="list-checks"></i><span id="tradeSelectionModeStateSpan">Enable</span> Trade Selection Mode</button>
+            <button id="tradeSelectionToggleButton"><i data-lucide="list-checks"></i><span class="tradeSelectionButtonLabel"><span id="tradeSelectionModeStateSpan">Enable</span> Trade Selection Mode</span></button>
             <button id="tradeSelectAllButton" class="disableOutsideTradeSelectionMode"><i data-lucide="check-square"></i>Select All</button>
             <button id="tradeClearSelectionButton" class="disableOutsideTradeSelectionMode"><i data-lucide="square"></i>Clear Selection</button>
             </div>
@@ -141,9 +150,6 @@
                         <button id="copyAsTextListButton" class="hideInTradeView"><i data-lucide="clipboard-list"></i>Copy Text List</button>
                         <div class="copyImageLoadingWheel loading" hidden></div>
                         <span class="copyImageStatus" role="status" aria-live="polite"></span>
-                    </div>
-                    <div class="actionToolbar stylingDrawerMobileToolbar">
-                        <button id="stylingDrawerOpenButton"><i data-lucide="panel-right-open"></i>Image Styling</button>
                     </div>
                     <div class="priceCalculationToolbars hideInTradeView">
             <div class="actionToolbar">
