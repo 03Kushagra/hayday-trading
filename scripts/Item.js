@@ -144,10 +144,12 @@ function submitTradeRow()
     const wantItems = getTradeDraftItemsForSubmit("want");
     const hasOfferInput = formatItemName(tradeOfferNameInput.val()).length > 0;
     const hasWantInput = formatItemName(tradeWantNameInput.val()).length > 0;
+    const shouldRemoveOfferInput = shouldRemoveSelectedTradeInput("offer");
+    const shouldRemoveWantInput = shouldRemoveSelectedTradeInput("want");
 
     Promise.all([
-        hasOfferInput ? getTradeInputItem(tradeOfferNameInput, tradeOfferQuantityInput) : undefined,
-        hasWantInput ? getTradeInputItem(tradeWantNameInput, tradeWantQuantityInput) : undefined
+        hasOfferInput && !shouldRemoveOfferInput ? getTradeInputItem(tradeOfferNameInput, tradeOfferQuantityInput) : undefined,
+        hasWantInput && !shouldRemoveWantInput ? getTradeInputItem(tradeWantNameInput, tradeWantQuantityInput) : undefined
     ])
         .then(([offerInputItem, wantInputItem]) =>
         {
@@ -192,10 +194,18 @@ function addTradeDraftItem(side)
     const itemList = isOfferSide ? tradeDraftOfferItems : tradeDraftWantItems;
     const nameInput = isOfferSide ? tradeOfferNameInput : tradeWantNameInput;
     const quantityInput = isOfferSide ? tradeOfferQuantityInput : tradeWantQuantityInput;
-    const itemOrder = tradeDraftOrder++;
 
     clearTradeInvalidState();
 
+    if(shouldRemoveSelectedTradeInput(side))
+    {
+        resetTradeInputAfterDraftChange(side);
+        updateTradeDraftSummary();
+        rescaleScreenshotRegion();
+        return;
+    }
+
+    const itemOrder = tradeDraftOrder++;
     const pendingPromise = getTradeInputItem(nameInput, quantityInput, true)
         .then(item =>
         {
@@ -206,8 +216,7 @@ function addTradeDraftItem(side)
             addOrMergeTradeItem(itemList, item);
             item.tradeOrder = itemOrder;
             sortTradeItemsByOrder(itemList);
-            clearTradeNameInput(side, item.name);
-            focusTradeQuantityInput(side);
+            resetTradeInputAfterDraftChange(side, item.name);
             updateTradeDraftSummary();
             rescaleScreenshotRegion();
         })
@@ -220,6 +229,44 @@ function addTradeDraftItem(side)
             tradeDraftPendingPromises = tradeDraftPendingPromises.filter(promise => promise !== pendingPromise);
         });
     tradeDraftPendingPromises.push(pendingPromise);
+}
+
+function shouldRemoveSelectedTradeInput(side)
+{
+    if(editingTradeRowIndex === undefined)
+        return false;
+
+    const cachedItem = getTradeInputCache(side);
+    const nameInput = getTradeNameInput(side);
+    const quantityInput = side === "offer" ? tradeOfferQuantityInput : tradeWantQuantityInput;
+    if(!cachedItem || formatItemName(nameInput.val()) !== cachedItem.name)
+        return false;
+
+    try
+    {
+        return Number(math.evaluate(quantityInput.val().trim())) === 0;
+    }
+    catch(e)
+    {
+        return false;
+    }
+}
+
+function resetTradeInputAfterDraftChange(side, itemNameToClear)
+{
+    const nameInput = getTradeNameInput(side);
+    const quantityInput = side === "offer" ? tradeOfferQuantityInput : tradeWantQuantityInput;
+    if(itemNameToClear === undefined || formatItemName(nameInput.val()) === itemNameToClear)
+    {
+        nameInput.val("");
+        quantityInput.val("0");
+        if(side === "offer")
+            tradeOfferInputItemCache = undefined;
+        else
+            tradeWantInputItemCache = undefined;
+    }
+
+    nameInput.trigger("focus").trigger("select");
 }
 
 async function getTradeInputItem(nameInput, quantityInput, shouldRequireName = false)
@@ -313,26 +360,6 @@ function clearTradeInputs(side = "all")
     }
 }
 
-function clearTradeNameInput(side, itemNameToClear)
-{
-    if(side === "offer")
-    {
-        if(formatItemName(tradeOfferNameInput.val()) === itemNameToClear)
-        {
-            tradeOfferNameInput.val("");
-            tradeOfferInputItemCache = undefined;
-        }
-    }
-    else
-    {
-        if(formatItemName(tradeWantNameInput.val()) === itemNameToClear)
-        {
-            tradeWantNameInput.val("");
-            tradeWantInputItemCache = undefined;
-        }
-    }
-}
-
 function clearTradeInvalidState()
 {
     tradeOfferNameInput.removeClass("invalid");
@@ -370,7 +397,7 @@ function getTradeSummaryParts(side)
     const itemList = side === "offer" ? tradeDraftOfferItems : tradeDraftWantItems;
     const parts = itemList.map(item => formatTradeItemSummary(item));
     const cachedItem = editingTradeRowIndex === undefined ? undefined : getTradeInputCache(side);
-    if(cachedItem && !itemList.some(item => item.name === cachedItem.name))
+    if(cachedItem && !shouldRemoveSelectedTradeInput(side) && !itemList.some(item => item.name === cachedItem.name))
         parts.unshift(formatTradeItemSummary(cachedItem));
 
     return parts;
@@ -996,7 +1023,7 @@ function handleSpecialNames(itemName)
 }
 
 const customItemNames = new Set(["BEM Set", "SEM Set", "TEM Set", "LEM Set"]);
-const localImageItemNames = new Set([...customItemNames, "Lamb_Doner_Wrap", "Tower_Doner_Supreme", "Spicy_Bean_Doner"]);
+const localImageItemNames = new Set(customItemNames);
 function setUpCustomItems()
 {
     for(let name of customItemNames)

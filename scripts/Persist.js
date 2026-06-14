@@ -56,11 +56,11 @@ function loadAllFromLocalStorage()
     localStorage.removeItem("generatedImageFont");
     loadGeneratedImageStylesForCurrentMode();
 
-    const sItemsPerRow = localStorage.getItem("itemsPerRow") ?? Math.min(Math.floor(document.documentElement.clientWidth / 110), 8);
+    const sItemsPerRow = localStorage.getItem("itemsPerRow") ?? "8";
     itemsPerRowSlider.val(sItemsPerRow);
     itemsPerRowLabel.text(sItemsPerRow);
     itemsPerRow = parseInt(sItemsPerRow);
-    tradeRowsPerRow = Math.min(4, parseInt(localStorage.getItem("tradeRowsPerRow") ?? "4"));
+    tradeRowsPerRow = Math.min(4, parseInt(localStorage.getItem("tradeRowsPerRow") ?? "2"));
 
     textListSeparatorSelectedRadio = parseInt(localStorage.getItem("textListSeparatorSelectedRadio") ?? 0);
     const sTextListCustomSeparator = localStorage.getItem("textListCustomSeparator") ?? "";

@@ -316,7 +316,7 @@ function applyGeneratedImageStyles()
     screenshotRegion.toggleClass("hideGeneratedItemQuantities", !generatedImageShowItemQuantityInput.prop("checked"));
     screenshotRegion.toggleClass("hideGeneratedItemPrices", !generatedImageShowItemPriceInput.prop("checked"));
     itemInfinityQuantityButton.prop("hidden", !generatedImageEnableInfinityInput.prop("checked"));
-    rightWatermark.text(generatedImageCreditInput.val());
+    leftWatermark.text(generatedImageCreditInput.val());
     fitGeneratedImageBottomText();
     updateGeneratedImageColorSwatches();
 }
@@ -618,11 +618,11 @@ function getDefaultItemListSettings()
     };
 
     if(getIsInTradeView())
-        return {...styleDefaults, tradeRowsPerRow: "4"};
+        return {...styleDefaults, tradeRowsPerRow: "2"};
 
     return {
         ...styleDefaults,
-        itemsPerRow: String(Math.min(Math.floor(document.documentElement.clientWidth / 110), 8)),
+        itemsPerRow: "8",
         textListSeparatorSelectedRadio: "0",
         textListCustomSeparator: "",
         textListFormat: "{{quantity}} {{name}} ({{price}})",

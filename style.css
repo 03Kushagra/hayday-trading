@@ -932,11 +932,20 @@ td.selected, .invalid
     text-shadow: 0 1px 2px var(--screenshot-credit-shadow, #000);
 }
 
-#rightWatermark
+#leftWatermark
 {
     position: absolute;
     bottom: calc(var(--screenshot-padding-bottom, 10px) + var(--screenshot-footer-bottom-gap));
+    left: 12px;
+    margin: 0;
+    text-align: left;
+}
+
+#rightWatermark
+{
+    position: absolute;
     right: 12px;
+    bottom: calc(var(--screenshot-padding-bottom, 10px) + var(--screenshot-footer-bottom-gap));
     margin: 0;
     text-align: right;
 }

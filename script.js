@@ -27,7 +27,7 @@ function getLocaleString(num)
 }
 
 let itemsPerRow = 8;
-let tradeRowsPerRow = 4;
+let tradeRowsPerRow = 2;
 let textListSeparatorSelectedRadio = 0;
 
 let itemsPerRowSlider, itemsPerRowLabel, itemsPerRowOptionLabel, itemNameInput, itemQuantityInput, itemInfinityQuantityButton, itemPriceOrMultiplierInput, itemTable, normalItemsPlaceholder;
@@ -35,7 +35,7 @@ let normalViewButton, tradeViewButton, itemEditorModeTitle, normalItemEntryHint,
 let tradeOfferNameInput, tradeOfferQuantityInput, tradeWantNameInput, tradeWantQuantityInput, tradeOfferFuzzyMatchesHolder, tradeWantFuzzyMatchesHolder, tradeDisplay;
 let tradeDraftSummary, tradeCancelEditButton;
 let tradeSelectionModeStateSpan, tradeUnselectedVisibilityStateSpan, disableOutsideTradeSelectionModeElems;
-let bottomText, screenshotRegion, screenshotPriceHolder, rightWatermark;
+let bottomText, screenshotRegion, screenshotPriceHolder, leftWatermark;
 let stylingDrawer, stylingDrawerOpenButton, stylingDrawerCloseButton, advancedSettingsDrawerContent;
 let generatedImageBackgroundModeInput, generatedImagePresetInput, generatedImagePresetLabel, generatedImageSolidPaletteField, generatedImageBackgroundColorInput, generatedImageGradientColorInput, generatedImageGradientAngleInput, generatedImageGradientAngleLabel, generatedImageBorderColorInput, generatedImageBorderThicknessInput, generatedImageBorderThicknessOutput, generatedImageTextColorInput, generatedImageFontInput, generatedImageBottomTextInput, generatedImageShowBottomTextInput, generatedImageCreditInput, generatedImageGradientFields;
 let generatedImagePaddingTopInput, generatedImagePaddingRightInput, generatedImagePaddingBottomInput, generatedImagePaddingLeftInput, generatedImagePaddingTopOutput, generatedImagePaddingRightOutput, generatedImagePaddingBottomOutput, generatedImagePaddingLeftOutput, generatedImagePaddingResetButton;
@@ -152,7 +152,7 @@ $(document).ready(() =>
     bottomText = $("#bottomText");
     screenshotRegion = $("#screenshotRegion");
     screenshotPriceHolder = $("#screenshotPriceHolder");
-    rightWatermark = $("#rightWatermark");
+    leftWatermark = $("#leftWatermark");
     stylingDrawer = $("#stylingDrawer");
     stylingDrawerOpenButton = $("#stylingDrawerOpenButton");
     stylingDrawerCloseButton = $("#stylingDrawerCloseButton");
@@ -1026,10 +1026,12 @@ function submitTradeRow()
     const wantItems = getTradeDraftItemsForSubmit("want");
     const hasOfferInput = formatItemName(tradeOfferNameInput.val()).length > 0;
     const hasWantInput = formatItemName(tradeWantNameInput.val()).length > 0;
+    const shouldRemoveOfferInput = shouldRemoveSelectedTradeInput("offer");
+    const shouldRemoveWantInput = shouldRemoveSelectedTradeInput("want");
 
     Promise.all([
-        hasOfferInput ? getTradeInputItem(tradeOfferNameInput, tradeOfferQuantityInput) : undefined,
-        hasWantInput ? getTradeInputItem(tradeWantNameInput, tradeWantQuantityInput) : undefined
+        hasOfferInput && !shouldRemoveOfferInput ? getTradeInputItem(tradeOfferNameInput, tradeOfferQuantityInput) : undefined,
+        hasWantInput && !shouldRemoveWantInput ? getTradeInputItem(tradeWantNameInput, tradeWantQuantityInput) : undefined
     ])
         .then(([offerInputItem, wantInputItem]) =>
         {
@@ -1074,10 +1076,18 @@ function addTradeDraftItem(side)
     const itemList = isOfferSide ? tradeDraftOfferItems : tradeDraftWantItems;
     const nameInput = isOfferSide ? tradeOfferNameInput : tradeWantNameInput;
     const quantityInput = isOfferSide ? tradeOfferQuantityInput : tradeWantQuantityInput;
-    const itemOrder = tradeDraftOrder++;
 
     clearTradeInvalidState();
 
+    if(shouldRemoveSelectedTradeInput(side))
+    {
+        resetTradeInputAfterDraftChange(side);
+        updateTradeDraftSummary();
+        rescaleScreenshotRegion();
+        return;
+    }
+
+    const itemOrder = tradeDraftOrder++;
     const pendingPromise = getTradeInputItem(nameInput, quantityInput, true)
         .then(item =>
         {
@@ -1088,8 +1098,7 @@ function addTradeDraftItem(side)
             addOrMergeTradeItem(itemList, item);
             item.tradeOrder = itemOrder;
             sortTradeItemsByOrder(itemList);
-            clearTradeNameInput(side, item.name);
-            focusTradeQuantityInput(side);
+            resetTradeInputAfterDraftChange(side, item.name);
             updateTradeDraftSummary();
             rescaleScreenshotRegion();
         })
@@ -1102,6 +1111,44 @@ function addTradeDraftItem(side)
             tradeDraftPendingPromises = tradeDraftPendingPromises.filter(promise => promise !== pendingPromise);
         });
     tradeDraftPendingPromises.push(pendingPromise);
+}
+
+function shouldRemoveSelectedTradeInput(side)
+{
+    if(editingTradeRowIndex === undefined)
+        return false;
+
+    const cachedItem = getTradeInputCache(side);
+    const nameInput = getTradeNameInput(side);
+    const quantityInput = side === "offer" ? tradeOfferQuantityInput : tradeWantQuantityInput;
+    if(!cachedItem || formatItemName(nameInput.val()) !== cachedItem.name)
+        return false;
+
+    try
+    {
+        return Number(math.evaluate(quantityInput.val().trim())) === 0;
+    }
+    catch(e)
+    {
+        return false;
+    }
+}
+
+function resetTradeInputAfterDraftChange(side, itemNameToClear)
+{
+    const nameInput = getTradeNameInput(side);
+    const quantityInput = side === "offer" ? tradeOfferQuantityInput : tradeWantQuantityInput;
+    if(itemNameToClear === undefined || formatItemName(nameInput.val()) === itemNameToClear)
+    {
+        nameInput.val("");
+        quantityInput.val("0");
+        if(side === "offer")
+            tradeOfferInputItemCache = undefined;
+        else
+            tradeWantInputItemCache = undefined;
+    }
+
+    nameInput.trigger("focus").trigger("select");
 }
 
 async function getTradeInputItem(nameInput, quantityInput, shouldRequireName = false)
@@ -1195,26 +1242,6 @@ function clearTradeInputs(side = "all")
     }
 }
 
-function clearTradeNameInput(side, itemNameToClear)
-{
-    if(side === "offer")
-    {
-        if(formatItemName(tradeOfferNameInput.val()) === itemNameToClear)
-        {
-            tradeOfferNameInput.val("");
-            tradeOfferInputItemCache = undefined;
-        }
-    }
-    else
-    {
-        if(formatItemName(tradeWantNameInput.val()) === itemNameToClear)
-        {
-            tradeWantNameInput.val("");
-            tradeWantInputItemCache = undefined;
-        }
-    }
-}
-
 function clearTradeInvalidState()
 {
     tradeOfferNameInput.removeClass("invalid");
@@ -1252,7 +1279,7 @@ function getTradeSummaryParts(side)
     const itemList = side === "offer" ? tradeDraftOfferItems : tradeDraftWantItems;
     const parts = itemList.map(item => formatTradeItemSummary(item));
     const cachedItem = editingTradeRowIndex === undefined ? undefined : getTradeInputCache(side);
-    if(cachedItem && !itemList.some(item => item.name === cachedItem.name))
+    if(cachedItem && !shouldRemoveSelectedTradeInput(side) && !itemList.some(item => item.name === cachedItem.name))
         parts.unshift(formatTradeItemSummary(cachedItem));
 
     return parts;
@@ -1878,7 +1905,7 @@ function handleSpecialNames(itemName)
 }
 
 const customItemNames = new Set(["BEM Set", "SEM Set", "TEM Set", "LEM Set"]);
-const localImageItemNames = new Set([...customItemNames, "Lamb_Doner_Wrap", "Tower_Doner_Supreme", "Spicy_Bean_Doner"]);
+const localImageItemNames = new Set(customItemNames);
 function setUpCustomItems()
 {
     for(let name of customItemNames)
@@ -2985,7 +3012,7 @@ function applyGeneratedImageStyles()
     screenshotRegion.toggleClass("hideGeneratedItemQuantities", !generatedImageShowItemQuantityInput.prop("checked"));
     screenshotRegion.toggleClass("hideGeneratedItemPrices", !generatedImageShowItemPriceInput.prop("checked"));
     itemInfinityQuantityButton.prop("hidden", !generatedImageEnableInfinityInput.prop("checked"));
-    rightWatermark.text(generatedImageCreditInput.val());
+    leftWatermark.text(generatedImageCreditInput.val());
     fitGeneratedImageBottomText();
     updateGeneratedImageColorSwatches();
 }
@@ -3287,11 +3314,11 @@ function getDefaultItemListSettings()
     };
 
     if(getIsInTradeView())
-        return {...styleDefaults, tradeRowsPerRow: "4"};
+        return {...styleDefaults, tradeRowsPerRow: "2"};
 
     return {
         ...styleDefaults,
-        itemsPerRow: String(Math.min(Math.floor(document.documentElement.clientWidth / 110), 8)),
+        itemsPerRow: "8",
         textListSeparatorSelectedRadio: "0",
         textListCustomSeparator: "",
         textListFormat: "{{quantity}} {{name}} ({{price}})",
@@ -3496,11 +3523,11 @@ function loadAllFromLocalStorage()
     localStorage.removeItem("generatedImageFont");
     loadGeneratedImageStylesForCurrentMode();
 
-    const sItemsPerRow = localStorage.getItem("itemsPerRow") ?? Math.min(Math.floor(document.documentElement.clientWidth / 110), 8);
+    const sItemsPerRow = localStorage.getItem("itemsPerRow") ?? "8";
     itemsPerRowSlider.val(sItemsPerRow);
     itemsPerRowLabel.text(sItemsPerRow);
     itemsPerRow = parseInt(sItemsPerRow);
-    tradeRowsPerRow = Math.min(4, parseInt(localStorage.getItem("tradeRowsPerRow") ?? "4"));
+    tradeRowsPerRow = Math.min(4, parseInt(localStorage.getItem("tradeRowsPerRow") ?? "2"));
 
     textListSeparatorSelectedRadio = parseInt(localStorage.getItem("textListSeparatorSelectedRadio") ?? 0);
     const sTextListCustomSeparator = localStorage.getItem("textListCustomSeparator") ?? "";

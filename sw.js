@@ -1,4 +1,4 @@
-const cacheName = "hay-day-trading-v1";
+const cacheName = "hay-day-trading-v2";
 const appShell = [
     "./",
     "./index.html",
@@ -9,10 +9,7 @@ const appShell = [
     "./images/BEM Set.png",
     "./images/LEM Set.png",
     "./images/SEM Set.png",
-    "./images/TEM Set.png",
-    "./images/Lamb_Doner_Wrap.png",
-    "./images/Tower_Doner_Supreme.png",
-    "./images/Spicy_Bean_Doner.png"
+    "./images/TEM Set.png"
 ];
 
 self.addEventListener("install", event =>
