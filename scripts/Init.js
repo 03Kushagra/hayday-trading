@@ -18,10 +18,13 @@ $(document).ready(() =>
 
     normalViewButton = $("#normalViewButton");
     tradeViewButton = $("#tradeViewButton");
+    exchangeViewButton = $("#exchangeViewButton");
+    exchangeViewButton.prop("hidden", !isExchangeFeatureEnabled);
     itemEditorModeTitle = $("#itemEditorModeTitle");
     normalItemEntryHint = $("#normalItemEntryHint");
     normalItemEntryArea = $("#normalItemEntryArea");
     tradeItemEntryArea = $("#tradeItemEntryArea");
+    exchangeItemEntryArea = $("#exchangeItemEntryArea");
     normalItemClickInfo = $("#normalItemClickInfo");
     hideInTradeViewElems = $(".hideInTradeView");
     tradeOfferNameInput = $("#tradeOfferNameInput");
@@ -33,9 +36,21 @@ $(document).ready(() =>
     tradeDisplay = $("#tradeDisplay");
     tradeDraftSummary = $("#tradeDraftSummary");
     tradeCancelEditButton = $("#tradeCancelEditButton");
+    tradeRatioFormatToggleButton = $("#tradeRatioFormatToggleButton");
     tradeSelectionModeStateSpan = $("#tradeSelectionModeStateSpan");
     tradeUnselectedVisibilityStateSpan = $("#tradeUnselectedVisibilityStateSpan");
     disableOutsideTradeSelectionModeElems = $(".disableOutsideTradeSelectionMode");
+    exchangeDisplay = $("#exchangeDisplay");
+    exchangeItemsPerLineInput = $("#exchangeItemsPerLineInput");
+    exchangeSideInput = $("#exchangeSideInput");
+    exchangeRowInput = $("#exchangeRowInput");
+    exchangeNameInput = $("#exchangeNameInput");
+    exchangeQuantityInput = $("#exchangeQuantityInput");
+    exchangeInfinityButton = $("#exchangeInfinityButton");
+    exchangeSaveItemButton = $("#exchangeSaveItemButton");
+    exchangeRemoveItemButton = $("#exchangeRemoveItemButton");
+    exchangeRemoveRowButton = $("#exchangeRemoveRowButton");
+    exchangeFuzzyMatchesHolder = $("#exchangeFuzzyMatchesHolder");
 
     bottomText = $("#bottomText");
     screenshotRegion = $("#screenshotRegion");
@@ -80,6 +95,7 @@ $(document).ready(() =>
     generatedImageItemPriceSizeOutput = $("#generatedImageItemPriceSizeOutput");
 
     suggestionOverlayShowButton = $("#suggestionOverlayShowButton");
+    changelogOverlayShowButton = $("#changelogOverlayShowButton");
     suggestionForm = $("#suggestionForm");
     suggestionSubmitButton = $("#suggestionSubmitButton");
     suggestionLoadingWheel = $("#suggestionLoadingWheel");
@@ -126,6 +142,7 @@ $(document).ready(() =>
 
     contactOverlay = new Overlay("contactOverlay", "showButton");
     suggestionOverlay = new Overlay("suggestionOverlay");
+    changelogOverlay = new Overlay("changelogOverlay");
 
     copyImageLoadingWheel = $(".copyImageLoadingWheel");
     copyImageStatus = $(".copyImageStatus");
@@ -137,9 +154,11 @@ $(document).ready(() =>
 
     tradeViewButton.on("click", () =>
     {
-        setTradeViewEnabled(true);
+        setEditorMode("trade");
     });
-    normalViewButton.on("click", () => setTradeViewEnabled(false));
+    normalViewButton.on("click", () => setEditorMode("buySell"));
+    if(isExchangeFeatureEnabled)
+        exchangeViewButton.on("click", () => setEditorMode("exchange"));
 
     itemsPerRowSlider.on("input", (event) =>
     {
@@ -149,7 +168,7 @@ $(document).ready(() =>
             itemsPerRowLabel.text(tradeRowsPerRow);
             updateTradeDisplay();
         }
-        else
+        else if(getIsInBuySellView())
         {
             itemsPerRow = parseInt(event.target.value);
             itemsPerRowLabel.text(itemsPerRow);
@@ -292,9 +311,9 @@ $(document).ready(() =>
     {
         const wasEnabled = getIsInTradeSelectionMode();
         isTradeSelectionModeEnabled = !wasEnabled;
-        disableOutsideTradeSelectionModeElems.prop("disabled", wasEnabled);
         tradeSelectionModeStateSpan.text(wasEnabled ? "Enable" : "Disable");
         event.currentTarget.classList.toggle("selected", !wasEnabled);
+        updateTradeSelectionControls();
         updateTradeDisplay();
     });
     $("#tradeSelectAllButton").on("click", () =>
@@ -325,6 +344,73 @@ $(document).ready(() =>
         event.currentTarget.classList.toggle("selected", shouldHideUnselectedTrades);
         updateTradeDisplay();
     });
+    tradeRatioFormatToggleButton.on("click", toggleSelectedTradeRatioFormat);
+    $("#exchangeAddNewRowButton").on("click", () =>
+    {
+        exchangeEditorRowCount++;
+        setExchangeInlineEditor("have", exchangeEditorRowCount - 1);
+    });
+    $("#exchangeClearButton").on("click", () =>
+    {
+        exchangeRows = {have: [], want: []};
+        exchangeEditorRowCount = EXCHANGE_DEFAULT_ROW_COUNT;
+        exchangeEditingSide = undefined;
+        exchangeEditingIndex = undefined;
+        exchangeEditingItemIndex = undefined;
+        saveExchangeRowsToLocalStorage();
+        syncExchangeTopEditorFields();
+        updateExchangeDisplay();
+    });
+    $(document).on("click", ".exchangeSideAddButton", event =>
+    {
+        setExchangeInlineEditor(event.currentTarget.dataset.side, Number(event.currentTarget.dataset.index), true);
+    });
+    $(document).on("click", ".exchangeRowDeleteButton", event =>
+    {
+        event.stopPropagation();
+        removeExchangeRow(Number(event.currentTarget.dataset.index));
+    });
+    exchangeSideInput.on("change", () =>
+    {
+        const index = getExchangeSelectedRowIndex();
+        setExchangeInlineEditor(exchangeSideInput.val(), index);
+    });
+    exchangeRowInput.on("change", () =>
+    {
+        const index = getExchangeSelectedRowIndex();
+        setExchangeInlineEditor(exchangeSideInput.val(), index);
+    });
+    exchangeNameInput.on("focus", () => updateFuzzyMatches(exchangeNameInput, exchangeFuzzyMatchesHolder));
+    exchangeNameInput.on("blur", () => exchangeFuzzyMatchesHolder.empty());
+    exchangeNameInput.on("keydown", event => handleFuzzyMatchKeyboardSelection(event, exchangeFuzzyMatchesHolder));
+    exchangeNameInput.on("input", persistExchangeTopEditorDraft);
+    exchangeNameInput.on("keyup", event =>
+    {
+        if(event.code === "Enter")
+            saveExchangeTopEditor();
+        updateFuzzyMatches(exchangeNameInput, exchangeFuzzyMatchesHolder);
+    });
+    exchangeQuantityInput.on("input", persistExchangeTopEditorDraft);
+    exchangeQuantityInput.on("keyup", event =>
+    {
+        if(event.code === "Enter")
+            saveExchangeTopEditor();
+    });
+    exchangeInfinityButton.on("click", () =>
+    {
+        exchangeQuantityInput.val(INFINITY_QUANTITY).trigger("select");
+        persistExchangeTopEditorDraft();
+    });
+    exchangeSaveItemButton.on("click", saveExchangeTopEditor);
+    exchangeRemoveItemButton.on("click", removeExchangeTopEditorItem);
+    exchangeRemoveRowButton.on("click", () => removeExchangeRow(getExchangeSelectedRowIndex()));
+    exchangeItemsPerLineInput.on("change", () =>
+    {
+        exchangeItemsPerLine = Math.min(6, Math.max(1, Number(exchangeItemsPerLineInput.val()) || 3));
+        exchangeItemsPerLineInput.val(exchangeItemsPerLine);
+        saveExchangeRowsToLocalStorage();
+        updateExchangeDisplay();
+    });
 
     const coinImagePromise = getImageUrl("Coin")
         .then(imageUrl => coinImageUrl = imageUrl)
@@ -335,6 +421,9 @@ $(document).ready(() =>
     suggestionOverlayShowButton.on("click", () => setSuggestionOverlayVisible(true));
     suggestionOverlay.hideButton.on("click", () => setSuggestionOverlayVisible(false));
     suggestionOverlay.background.on("click", () => setSuggestionOverlayVisible(false));
+    changelogOverlayShowButton.on("click", () => setChangelogOverlayVisible(true));
+    changelogOverlay.hideButton.on("click", () => setChangelogOverlayVisible(false));
+    changelogOverlay.background.on("click", () => setChangelogOverlayVisible(false));
     suggestionForm.on("submit", submitSuggestionForm);
     suggestionIncognitoInput.on("change", updateSuggestionIncognitoState);
 

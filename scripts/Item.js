@@ -1,53 +1,97 @@
 const operators = ['+', '-', '*', '/', '^', '%', "mod", '&', '|', "<<", ">>>", ">>"];
+const EXCHANGE_DEFAULT_ROW_COUNT = 1;
+
+function getIsInBuySellView()
+{
+    return currentViewMode === "buySell";
+}
+
 function getIsInTradeView()
 {
-    return tradeViewButton.hasClass("selected");
+    return currentViewMode === "trade";
+}
+
+function getIsInExchangeView()
+{
+    return currentViewMode === "exchange";
+}
+
+function getIsInTradeLikeView()
+{
+    return getIsInTradeView() || getIsInExchangeView();
 }
 
 function setTradeViewEnabled(shouldEnable)
 {
-    if(shouldEnable === getIsInTradeView())
+    setEditorMode(shouldEnable ? "trade" : "buySell");
+}
+
+function setEditorMode(mode)
+{
+    if(mode === "exchange" && !isExchangeFeatureEnabled)
+        mode = "buySell";
+
+    if(mode === currentViewMode)
         return;
 
-    if(shouldEnable && getIsInPriceCalculationMode())
+    const leavingTradeView = getIsInTradeView();
+    if(mode !== "buySell" && getIsInPriceCalculationMode())
         $("#priceCalculationToggleButton").trigger("click");
-    if(!shouldEnable && getIsInTradeSelectionMode())
+    if(leavingTradeView && getIsInTradeSelectionMode())
         $("#tradeSelectionToggleButton").trigger("click");
 
     storeItemList();
-    normalViewButton.toggleClass("selected", !shouldEnable);
-    tradeViewButton.toggleClass("selected", shouldEnable);
-    $("body").toggleClass("tradeView", shouldEnable);
+    currentViewMode = mode;
+    const isTradeView = getIsInTradeView();
+    const isExchangeView = getIsInExchangeView();
+    const isTradeLikeView = getIsInTradeLikeView();
+    normalViewButton.toggleClass("selected", getIsInBuySellView());
+    tradeViewButton.toggleClass("selected", isTradeView);
+    exchangeViewButton.toggleClass("selected", isExchangeView);
+    $("body").toggleClass("tradeView", isTradeLikeView);
+    $("body").toggleClass("exchangeView", isExchangeView);
     activateItemListsForCurrentMode();
     loadItemList();
 
-    itemEditorModeTitle.text(shouldEnable ? "Trade View" : "Add/Modify Item");
-    itemsPerRowOptionLabel.text(shouldEnable ? "Trades Per Row" : "Items Per Row");
-    itemsPerRowSlider.prop("max", shouldEnable ? 4 : 12);
-    itemsPerRowSlider.val(shouldEnable ? tradeRowsPerRow : itemsPerRow);
-    itemsPerRowLabel.text(shouldEnable ? tradeRowsPerRow : itemsPerRow);
-    normalItemEntryHint.prop("hidden", shouldEnable);
-    normalItemEntryArea.prop("hidden", shouldEnable);
-    tradeItemEntryArea.prop("hidden", !shouldEnable);
-    normalItemClickInfo.prop("hidden", shouldEnable);
-    priceCalculationModeSelectionInfo.prop("hidden", shouldEnable || !getIsInPriceCalculationMode());
+    itemEditorModeTitle.text(isTradeView ? "Trade View" : isExchangeView ? "Exchange Resource" : "Add/Modify Item");
+    itemsPerRowOptionLabel.text(isTradeView ? "Trades Per Row" : "Items Per Row");
+    itemsPerRowSlider.prop("max", isTradeView ? 4 : 12);
+    itemsPerRowSlider.val(isTradeView ? tradeRowsPerRow : itemsPerRow);
+    itemsPerRowLabel.text(isTradeView ? tradeRowsPerRow : itemsPerRow);
+    $(".rowCountControl").prop("hidden", isExchangeView);
+    normalItemEntryHint.prop("hidden", isTradeLikeView);
+    normalItemEntryArea.prop("hidden", isTradeLikeView);
+    tradeItemEntryArea.prop("hidden", !isTradeView);
+    exchangeItemEntryArea.prop("hidden", !isExchangeView);
+    normalItemClickInfo.prop("hidden", isTradeLikeView);
+    priceCalculationModeSelectionInfo.prop("hidden", isTradeLikeView || !getIsInPriceCalculationMode());
     updatePriceCalculationDetailsVisibility();
 
-    hideInTradeViewElems.prop("hidden", shouldEnable);
-    itemTable.prop("hidden", shouldEnable);
-    normalItemsPlaceholder.prop("hidden", shouldEnable || !!items.size);
-    tradeDisplay.prop("hidden", !shouldEnable);
+    hideInTradeViewElems.prop("hidden", isTradeLikeView);
+    itemTable.prop("hidden", isTradeLikeView);
+    normalItemsPlaceholder.prop("hidden", isTradeLikeView || !!items.size);
+    tradeDisplay.prop("hidden", !isTradeView);
+    exchangeDisplay.prop("hidden", !isExchangeView);
 
-    if(shouldEnable)
+    if(isTradeView)
     {
         screenshotPriceHolder.empty();
+        exchangeDisplay.empty();
         updateTradeDisplay();
         updateTradeDraftSummary();
         updateTradeSubmitButtonText();
     }
+    else if(isExchangeView)
+    {
+        screenshotPriceHolder.empty();
+        tradeDisplay.empty();
+        updateExchangeEditorRows();
+        updateExchangeDisplay();
+    }
     else
     {
         tradeDisplay.empty();
+        exchangeDisplay.empty();
         updateItemLayout();
     }
 
@@ -56,7 +100,7 @@ function setTradeViewEnabled(shouldEnable)
 
 function updateScreenshotEmptyState()
 {
-    const isEmpty = getIsInTradeView() ? !getVisibleTradeRows().length : !items.size;
+    const isEmpty = getIsInExchangeView() ? !getExchangeHasItems() : getIsInTradeView() ? !getVisibleTradeRows().length : !items.size;
     screenshotRegion.toggleClass("emptyPreview", isEmpty);
 }
 
@@ -78,10 +122,23 @@ function handleFuzzyMatchKeyboardSelection(e, fuzzyMatchesHolder)
 
 function getTradeSideForInput(itemInput)
 {
-    if(itemInput === tradeOfferNameInput)
+    const inputElement = itemInput?.[0];
+    if(inputElement === tradeOfferNameInput?.[0])
         return "offer";
-    if(itemInput === tradeWantNameInput)
+    if(inputElement === tradeWantNameInput?.[0])
         return "want";
+    return undefined;
+}
+
+function getQuantityInputForAutocomplete(itemInput)
+{
+    const tradeSide = getTradeSideForInput(itemInput);
+    if(tradeSide)
+        return tradeSide === "offer" ? tradeOfferQuantityInput : tradeWantQuantityInput;
+
+    if(itemInput?.[0] === exchangeNameInput?.[0])
+        return exchangeQuantityInput;
+
     return undefined;
 }
 
@@ -171,10 +228,16 @@ function submitTradeRow()
                 tradeRows.push({
                     offerItems,
                     wantItems,
+                    shouldReduceRatio: false,
                     isSelected: getIsInTradeSelectionMode() && shouldHideUnselectedTrades
                 });
             else
-                tradeRows[editingTradeRowIndex] = {offerItems, wantItems, isSelected: tradeRows[editingTradeRowIndex].isSelected};
+                tradeRows[editingTradeRowIndex] = {
+                    offerItems,
+                    wantItems,
+                    shouldReduceRatio: tradeRows[editingTradeRowIndex].shouldReduceRatio === true,
+                    isSelected: tradeRows[editingTradeRowIndex].isSelected
+                };
             saveTradeRowsToLocalStorage();
             clearTradeDraft();
             updateTradeDisplay();
@@ -341,6 +404,7 @@ function clearTradeDraft()
     clearTradeInputs();
     clearTradeInvalidState();
     updateTradeDraftControls();
+    updateTradeSelectionControls();
 }
 
 function clearTradeInputs(side = "all")
@@ -415,6 +479,7 @@ function updateTradeDisplay()
     tradeDisplay.empty();
     tradeDisplay.css("grid-template-columns", `repeat(${tradeRowsPerRow}, max-content)`);
     updateScreenshotEmptyState();
+    updateTradeSelectionControls();
 
     const visibleTradeRows = getVisibleTradeRows();
     if(!visibleTradeRows.length)
@@ -447,6 +512,49 @@ function getIsInTradeSelectionMode()
     return isTradeSelectionModeEnabled;
 }
 
+function getSelectedTradeRowIndexes()
+{
+    return tradeRows.reduce((indexes, tradeRow, index) =>
+    {
+        if(tradeRow.isSelected)
+            indexes.push(index);
+        return indexes;
+    }, []);
+}
+
+function updateTradeSelectionControls()
+{
+    if(!disableOutsideTradeSelectionModeElems)
+        return;
+
+    const ratioTargetIndex = getTradeRatioFormatTargetIndex();
+    const selectedTradeRow = ratioTargetIndex === undefined ? undefined : tradeRows[ratioTargetIndex];
+    disableOutsideTradeSelectionModeElems.prop("disabled", !getIsInTradeSelectionMode());
+    tradeRatioFormatToggleButton.prop("disabled", ratioTargetIndex === undefined);
+    tradeRatioFormatToggleButton.toggleClass("selected", selectedTradeRow?.shouldReduceRatio === true);
+}
+
+function getTradeRatioFormatTargetIndex()
+{
+    const selectedIndexes = getSelectedTradeRowIndexes();
+    if(getIsInTradeSelectionMode())
+        return selectedIndexes.length === 1 ? selectedIndexes[0] : undefined;
+
+    return editingTradeRowIndex;
+}
+
+function toggleSelectedTradeRatioFormat()
+{
+    const ratioTargetIndex = getTradeRatioFormatTargetIndex();
+    if(ratioTargetIndex === undefined)
+        return;
+
+    const tradeRow = tradeRows[ratioTargetIndex];
+    tradeRow.shouldReduceRatio = tradeRow.shouldReduceRatio !== true;
+    saveTradeRowsToLocalStorage();
+    updateTradeDisplay();
+}
+
 function toggleTradeRowSelection(index)
 {
     const tradeRow = tradeRows[index];
@@ -454,6 +562,7 @@ function toggleTradeRowSelection(index)
         return;
 
     tradeRow.isSelected = !tradeRow.isSelected;
+    updateTradeSelectionControls();
     updateTradeDisplay();
 }
 
@@ -496,7 +605,7 @@ function createTradeRow(tradeRow, index)
     row.appendChild(createTradeSide(tradeRow.wantItems, index, "want"));
 
     const ratioBadge = document.createElement("p");
-    ratioBadge.innerText = getTradeRatioText(tradeRow.offerItems, tradeRow.wantItems);
+    ratioBadge.innerText = getTradeRatioText(tradeRow.offerItems, tradeRow.wantItems, tradeRow.shouldReduceRatio);
     ratioBadge.classList.add("tradeRatioBadge");
     row.appendChild(ratioBadge);
 
@@ -533,6 +642,7 @@ function editTradeRow(index, shouldPopulateInputs = false)
         moveTradeDraftItemAtIndexToInput("offer", 0);
         moveTradeDraftItemAtIndexToInput("want", 0);
     }
+    updateTradeSelectionControls();
     updateTradeDraftSummary();
     updateTradeSubmitButtonText();
 }
@@ -604,6 +714,408 @@ function createTradeCard(item, clickHandler)
     card.appendChild(itemName);
 
     return card;
+}
+
+function getExchangeEntries(side)
+{
+    return side === "have" ? exchangeRows.have : exchangeRows.want;
+}
+
+function setExchangeEntries(side, entries)
+{
+    if(side === "have")
+        exchangeRows.have = entries;
+    else
+        exchangeRows.want = entries;
+}
+
+function normalizeExchangeEntries(entries)
+{
+    if(!Array.isArray(entries))
+        return [];
+
+    return entries.map(row => Array.isArray(row) ? row.map(normalizeExchangeEntry).filter(Boolean) : [normalizeExchangeEntry(row)].filter(Boolean));
+}
+
+function normalizeExchangeEntry(entry)
+{
+    if(!entry)
+        return undefined;
+
+    if(entry instanceof Item)
+        return {name: entry.getHumanReadableName(), quantity: String(entry.quantity)};
+
+    const item = Object.assign(new Item(), entry.item ?? entry);
+    return {
+        name: entry.name ?? (item.name ? item.getHumanReadableName() : ""),
+        quantity: String(entry.quantity ?? item.quantity ?? "")
+    };
+}
+
+function getExchangeRowEntries(side, index)
+{
+    const entries = getExchangeEntries(side);
+    if(!Array.isArray(entries[index]))
+        entries[index] = entries[index] ? [normalizeExchangeEntry(entries[index])].filter(Boolean) : [];
+    return entries[index];
+}
+
+function getExchangeEditorMinimumRowCount()
+{
+    return Math.max(EXCHANGE_DEFAULT_ROW_COUNT, exchangeEditorRowCount, exchangeRows.have.length, exchangeRows.want.length);
+}
+
+function updateExchangeEditorRows()
+{
+    exchangeEditorRowCount = getExchangeEditorMinimumRowCount();
+    syncExchangeTopEditorFields();
+    updateExchangeDisplay();
+}
+
+function clearExchangeInvalidState()
+{
+    exchangeNameInput?.removeClass("invalid");
+    exchangeQuantityInput?.removeClass("invalid");
+}
+
+async function getExchangeItemFromEntry(entry, side, index, itemIndex)
+{
+    const itemNameFormatted = formatItemName(entry.name ?? "");
+    if(!itemNameFormatted.length)
+        return undefined;
+
+    const quantity = getExchangeQuantity(entry.quantity ?? "");
+    if(quantity === undefined)
+    {
+        if(side === exchangeEditingSide && index === exchangeEditingIndex && itemIndex === exchangeEditingItemIndex)
+            exchangeQuantityInput.addClass("invalid");
+        return undefined;
+    }
+
+    try
+    {
+        const imageUrl = await getImageUrl(itemNameFormatted);
+        const item = new Item(itemNameFormatted, quantity, imageUrl, "", NaN);
+        item.exchangeIndex = index;
+        item.exchangeItemIndex = itemIndex;
+        return item;
+    }
+    catch(e)
+    {
+        if(side === exchangeEditingSide && index === exchangeEditingIndex && itemIndex === exchangeEditingItemIndex)
+            exchangeNameInput.addClass("invalid");
+        console.log("Failed to load exchange item --", e);
+        return undefined;
+    }
+}
+
+function getExchangeQuantity(quantityText)
+{
+    const trimmedQuantity = String(quantityText).trim();
+    if(!trimmedQuantity.length)
+        return 1;
+    if(trimmedQuantity === INFINITY_QUANTITY || trimmedQuantity.toLowerCase() === "infinity")
+        return INFINITY_QUANTITY;
+
+    try
+    {
+        const quantity = Math.floor(math.evaluate(trimmedQuantity));
+        return Number.isFinite(quantity) && quantity > 0 ? quantity : undefined;
+    }
+    catch(e)
+    {
+        console.log("Unable to evaluate exchange quantity --", e);
+        return undefined;
+    }
+}
+
+function getExchangeHasItems()
+{
+    return exchangeRows.have.some(row => row.some(entry => formatItemName(entry.name ?? "").length)) ||
+        exchangeRows.want.some(row => row.some(entry => formatItemName(entry.name ?? "").length));
+}
+
+async function updateExchangeDisplay()
+{
+    const token = ++exchangeUpdateToken;
+    clearExchangeInvalidState();
+    updateScreenshotEmptyState();
+
+    const haveItemPromises = exchangeRows.have.map((rowEntries, i) => Promise.all(rowEntries.map((entry, itemIndex) => getExchangeItemFromEntry(entry, "have", i, itemIndex))));
+    const wantItemPromises = exchangeRows.want.map((rowEntries, i) => Promise.all(rowEntries.map((entry, itemIndex) => getExchangeItemFromEntry(entry, "want", i, itemIndex))));
+    const [haveItems, wantItems] = await Promise.all([
+        Promise.all(haveItemPromises),
+        Promise.all(wantItemPromises)
+    ]);
+
+    if(token !== exchangeUpdateToken)
+        return;
+
+    updateScreenshotEmptyState();
+
+    exchangeDisplay.empty().append(createExchangeRowsScreen(haveItems, wantItems));
+    renderLucideIcons();
+    rescaleScreenshotRegion();
+}
+
+function createExchangeRowsScreen(haveItems, wantItems)
+{
+    const screen = document.createElement("div");
+    screen.classList.add("exchangeRowsScreen");
+    screen.classList.add(`exchangeItemsPerLine${exchangeItemsPerLine}`);
+
+    const header = document.createElement("div");
+    header.classList.add("exchangeRowsHeader");
+
+    const haveHeading = document.createElement("h3");
+    haveHeading.innerText = "What I Have";
+    header.appendChild(haveHeading);
+
+    const arrowHeading = document.createElement("span");
+    arrowHeading.classList.add("exchangeHeaderArrow");
+    arrowHeading.innerHTML = '<i data-lucide="move-right"></i>';
+    header.appendChild(arrowHeading);
+
+    const wantHeading = document.createElement("h3");
+    wantHeading.innerText = "What I Want";
+    header.appendChild(wantHeading);
+
+    const ratioHeading = document.createElement("h3");
+    ratioHeading.innerText = "Ratio";
+    header.appendChild(ratioHeading);
+
+    screen.appendChild(header);
+
+    const rowCount = Math.max(EXCHANGE_DEFAULT_ROW_COUNT, exchangeEditorRowCount, exchangeRows.have.length, exchangeRows.want.length);
+    for(let i = 0; i < rowCount; i++)
+        screen.appendChild(createExchangePreviewRow(haveItems[i], wantItems[i], i));
+
+    return screen;
+}
+
+function createExchangePreviewRow(haveItems, wantItems, index)
+{
+    haveItems = (haveItems ?? []).filter(Boolean);
+    wantItems = (wantItems ?? []).filter(Boolean);
+    const rowBlock = document.createElement("div");
+    rowBlock.classList.add("tradeRowBlock", "exchangeRowBlock");
+    if(!haveItems.length && !wantItems.length)
+        rowBlock.classList.add("exchangeSkeletonRow");
+    rowBlock.dataset.index = index;
+
+    rowBlock.appendChild(createExchangeSideCell("have", index, haveItems));
+
+    const direction = document.createElement("p");
+    direction.innerHTML = '<i data-lucide="move-right"></i>';
+    direction.classList.add("tradeDirection", "exchangeDirection");
+    rowBlock.appendChild(direction);
+
+    rowBlock.appendChild(createExchangeSideCell("want", index, wantItems));
+
+    const ratioBadge = document.createElement("p");
+    ratioBadge.innerText = haveItems.length || wantItems.length ? getExchangeRatioText(haveItems, wantItems) : "";
+    ratioBadge.classList.add("tradeRatioBadge");
+    rowBlock.appendChild(ratioBadge);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.classList.add("exchangeRowDeleteButton");
+    deleteButton.dataset.index = index;
+    deleteButton.title = "Remove row";
+    deleteButton.setAttribute("aria-label", "Remove exchange row");
+    deleteButton.innerHTML = '<i data-lucide="trash-2"></i>';
+    rowBlock.appendChild(deleteButton);
+
+    return rowBlock;
+}
+
+function createExchangeSideCell(sideName, index, items)
+{
+    const side = document.createElement("div");
+    side.classList.add("exchangeSideCell");
+    if(exchangeEditingSide === sideName && exchangeEditingIndex === index)
+        side.classList.add("selected");
+
+    const addButton = document.createElement("button");
+    addButton.type = "button";
+    addButton.classList.add("exchangeSideAddButton");
+    addButton.dataset.side = sideName;
+    addButton.dataset.index = index;
+    addButton.title = `Add ${sideName === "have" ? "Have" : "Want"} item`;
+    addButton.setAttribute("aria-label", addButton.title);
+    addButton.innerHTML = items.length ? '<i data-lucide="plus"></i>' : `<i data-lucide="plus"></i>${sideName === "have" ? "What I Have" : "What I Want"}`;
+
+    if(items.length)
+    {
+        side.classList.add("hasItem");
+        if(items.length > exchangeItemsPerLine)
+            side.classList.add("exchangeSideWrapped");
+        const itemList = document.createElement("div");
+        itemList.classList.add("exchangeSideItems");
+        for(const item of items)
+            itemList.appendChild(createTradeCard(item, () => setExchangeInlineEditor(sideName, index, false, item.exchangeItemIndex)));
+        side.appendChild(itemList);
+        if(items.length > exchangeItemsPerLine)
+            side.appendChild(addButton);
+        else
+            itemList.appendChild(addButton);
+    }
+    else
+        side.appendChild(addButton);
+    return side;
+}
+
+function setExchangeInlineEditor(sideName, index, shouldStartBlank = false, itemIndex = undefined)
+{
+    exchangeEditingSide = sideName;
+    exchangeEditingIndex = index;
+    exchangeEditingItemIndex = shouldStartBlank ? undefined : itemIndex;
+    exchangeEditorRowCount = Math.max(exchangeEditorRowCount, index + 1, EXCHANGE_DEFAULT_ROW_COUNT);
+    syncExchangeTopEditorFields();
+    if(shouldStartBlank)
+    {
+        exchangeNameInput.val("").removeClass("invalid");
+        exchangeQuantityInput.val("").removeClass("invalid");
+        exchangeRemoveItemButton.prop("disabled", true);
+    }
+    saveExchangeRowsToLocalStorage();
+    updateExchangeDisplay();
+    setTimeout(() =>
+    {
+        exchangeNameInput.trigger("focus");
+        exchangeNameInput[0]?.setSelectionRange(0, 0);
+    }, 0);
+}
+
+function getExchangeSelectedRowIndex()
+{
+    const rowNumber = Math.floor(Number(exchangeRowInput.val()));
+    return Number.isFinite(rowNumber) && rowNumber > 0 ? rowNumber - 1 : 0;
+}
+
+function syncExchangeTopEditorFields()
+{
+    if(!exchangeSideInput?.length)
+        return;
+
+    const side = ["have", "want"].includes(exchangeEditingSide) ? exchangeEditingSide : "have";
+    const index = Number.isInteger(exchangeEditingIndex) && exchangeEditingIndex >= 0 ? exchangeEditingIndex : 0;
+    const rowEntries = getExchangeRowEntries(side, index);
+    const entry = Number.isInteger(exchangeEditingItemIndex) ? rowEntries[exchangeEditingItemIndex] ?? {name: "", quantity: ""} : {name: "", quantity: ""};
+    exchangeSideInput.val(side);
+    exchangeRowInput.val(index + 1);
+    exchangeNameInput.val(entry.name ?? "");
+    exchangeQuantityInput.val(entry.quantity ?? "");
+    exchangeRemoveItemButton.prop("disabled", !Number.isInteger(exchangeEditingItemIndex) || !formatItemName(entry.name ?? "").length);
+    exchangeRemoveRowButton.prop("disabled", index < 0);
+}
+
+function persistExchangeTopEditorDraft()
+{
+    if(!exchangeSideInput?.length)
+        return;
+
+    const side = exchangeSideInput.val();
+    const index = getExchangeSelectedRowIndex();
+    exchangeEditingSide = side;
+    exchangeEditingIndex = index;
+    exchangeEditorRowCount = Math.max(exchangeEditorRowCount, index + 1, EXCHANGE_DEFAULT_ROW_COUNT);
+    exchangeRemoveItemButton.prop("disabled", !Number.isInteger(exchangeEditingItemIndex));
+    updateScreenshotEmptyState();
+}
+
+function saveExchangeTopEditor()
+{
+    const side = exchangeSideInput.val();
+    const index = getExchangeSelectedRowIndex();
+    const entry = {
+        name: exchangeNameInput.val().trim(),
+        quantity: exchangeQuantityInput.val().trim()
+    };
+
+    exchangeNameInput.removeClass("invalid");
+    exchangeQuantityInput.removeClass("invalid");
+    if(!formatItemName(entry.name).length)
+    {
+        exchangeNameInput.addClass("invalid");
+        return;
+    }
+    if(getExchangeQuantity(entry.quantity) === undefined)
+    {
+        exchangeQuantityInput.addClass("invalid");
+        return;
+    }
+
+    const rowEntries = getExchangeRowEntries(side, index);
+    if(Number.isInteger(exchangeEditingItemIndex) && exchangeEditingItemIndex >= 0 && exchangeEditingItemIndex < rowEntries.length)
+        rowEntries[exchangeEditingItemIndex] = entry;
+    else
+        rowEntries.push(entry);
+    exchangeEditingSide = side;
+    exchangeEditingIndex = index;
+    exchangeEditingItemIndex = undefined;
+    exchangeEditorRowCount = Math.max(exchangeEditorRowCount, index + 1, EXCHANGE_DEFAULT_ROW_COUNT);
+    saveExchangeRowsToLocalStorage();
+    updateExchangeDisplay();
+    exchangeNameInput.val("");
+    exchangeQuantityInput.val("");
+    exchangeRemoveItemButton.prop("disabled", true);
+    exchangeNameInput.trigger("focus");
+    exchangeNameInput[0]?.setSelectionRange(0, 0);
+}
+
+function removeExchangeTopEditorItem()
+{
+    const side = exchangeSideInput.val();
+    const index = getExchangeSelectedRowIndex();
+    const rowEntries = getExchangeRowEntries(side, index);
+    if(Number.isInteger(exchangeEditingItemIndex))
+        rowEntries.splice(exchangeEditingItemIndex, 1);
+    exchangeNameInput.val("");
+    exchangeQuantityInput.val("");
+    exchangeRemoveItemButton.prop("disabled", true);
+    exchangeEditingSide = side;
+    exchangeEditingIndex = index;
+    exchangeEditingItemIndex = undefined;
+    saveExchangeRowsToLocalStorage();
+    updateExchangeDisplay();
+    exchangeNameInput.trigger("focus");
+    exchangeNameInput[0]?.setSelectionRange(0, 0);
+}
+
+function removeExchangeRow(index)
+{
+    if(index < 0)
+        return;
+
+    exchangeRows.have.splice(index, 1);
+    exchangeRows.want.splice(index, 1);
+    exchangeEditorRowCount = Math.max(EXCHANGE_DEFAULT_ROW_COUNT, exchangeRows.have.length, exchangeRows.want.length);
+    if(exchangeEditingIndex === index)
+    {
+        exchangeEditingSide = undefined;
+        exchangeEditingIndex = undefined;
+        exchangeEditingItemIndex = undefined;
+    }
+    else if(exchangeEditingIndex > index)
+        exchangeEditingIndex--;
+
+    syncExchangeTopEditorFields();
+    saveExchangeRowsToLocalStorage();
+    updateExchangeDisplay();
+}
+
+function getExchangeRatioText(haveItems, wantItems)
+{
+    return `${formatExchangeRatioSide(haveItems)}:${formatExchangeRatioSide(wantItems)}`;
+}
+
+function formatExchangeRatioSide(items)
+{
+    if(items.some(item => getIsInfiniteQuantity(item.quantity)))
+        return INFINITY_QUANTITY;
+
+    return formatTradeRatioNumber(items.reduce((total, item) => total + getTradeRatioQuantity(item), 0));
 }
 
 function moveTradeDraftItemToInput(side, itemName)
@@ -694,7 +1206,7 @@ function getTradeRatioQuantity(item)
     return customItemNames.has(item.name) ? item.quantity * 89 : item.quantity;
 }
 
-function getTradeRatioText(offerItems, wantItems)
+function getTradeRatioValues(offerItems, wantItems)
 {
     const offerSetCount = getTradeSetCount(offerItems);
     const wantSetCount = getTradeSetCount(wantItems);
@@ -702,12 +1214,29 @@ function getTradeRatioText(offerItems, wantItems)
     const wantTotal = getTradeSideRatioTotal(wantItems);
 
     if(wantSetCount > 0 && wantSetCount === getTradeSideQuantityTotal(wantItems))
-        return `${formatTradeRatioNumber(offerTotal / wantSetCount)}:89`;
+        return [offerTotal / wantSetCount, 89];
 
     if(offerSetCount > 0 && offerSetCount === getTradeSideQuantityTotal(offerItems))
-        return `89:${formatTradeRatioNumber(wantTotal / offerSetCount)}`;
+        return [89, wantTotal / offerSetCount];
 
-    return `${formatTradeRatioNumber(offerTotal)}:${formatTradeRatioNumber(wantTotal)}`;
+    return [offerTotal, wantTotal];
+}
+
+function getTradeRatioText(offerItems, wantItems, shouldReduceRatio = false)
+{
+    let [offerRatio, wantRatio] = getTradeRatioValues(offerItems, wantItems);
+    if(shouldReduceRatio)
+        [offerRatio, wantRatio] = reduceTradeRatioValues(offerRatio, wantRatio);
+
+    return `${formatTradeRatioNumber(offerRatio)}:${formatTradeRatioNumber(wantRatio)}`;
+}
+
+function reduceTradeRatioValues(offerRatio, wantRatio)
+{
+    if(!Number.isFinite(offerRatio) || !Number.isFinite(wantRatio) || offerRatio <= 0)
+        return [offerRatio, wantRatio];
+
+    return [1, wantRatio / offerRatio];
 }
 
 function getTradeSetCount(items)
@@ -1053,7 +1582,7 @@ let previousSelection;
 function updateItemLayout()
 {
     itemTable.empty();
-    normalItemsPlaceholder.prop("hidden", !!items.size || getIsInTradeView());
+    normalItemsPlaceholder.prop("hidden", !!items.size || getIsInTradeLikeView());
     updateScreenshotEmptyState();
 
     const shouldShowSelection = getIsInPriceCalculationMode();
@@ -1431,7 +1960,7 @@ async function ensureItemsHaveMaxPriceSet()
         item.maxPrice = await getMaxPrice(item.name);
         shouldSave = true;
 
-        if(getIsInPriceCalculationMode() || !getIsInTradeView())
+        if(getIsInPriceCalculationMode() || !getIsInTradeLikeView())
             updateTotalPrice();
     }
 
@@ -1504,7 +2033,7 @@ function calculateTotalSelectedPrice()
 
 function updateTotalPrice()
 {
-    if(getIsInTradeView())
+    if(getIsInTradeLikeView())
     {
         screenshotPriceHolder.empty();
         updatePriceCalculationDetailsVisibility();
@@ -1544,7 +2073,7 @@ function updatePriceCalculationDetailsVisibility()
 {
     const shouldShowEquation = !totalSelectedPriceEquationHolder.is("[hidden]") && !!totalSelectedPriceEquationHolder.text();
     const shouldShowMessage = !totalSelectedPriceMessageHolder.is("[hidden]") && !!totalSelectedPriceMessageHolder.text();
-    totalSelectedPriceArea.prop("hidden", getIsInTradeView() || !getIsInPriceCalculationMode() || (!shouldShowEquation && !shouldShowMessage));
+    totalSelectedPriceArea.prop("hidden", getIsInTradeLikeView() || !getIsInPriceCalculationMode() || (!shouldShowEquation && !shouldShowMessage));
 }
 
 function calculateTotalPrice()
@@ -1660,6 +2189,7 @@ function updateFuzzyMatches(itemInput, fuzzyMatchesHolder)
         $(button).on("mousedown", {itemName: match.target}, (event, customParams) =>
         {
             itemInput.val(event.data.itemName);
+            itemInput.trigger("input");
 
             if(itemInput === priceCalculationItemInput)
                 itemInput.trigger("change");
@@ -1668,9 +2198,9 @@ function updateFuzzyMatches(itemInput, fuzzyMatchesHolder)
 
                 $("*").one("mouseup.fuzzyMatchClick", (e) =>
                 {
-                    const tradeSide = getTradeSideForInput(itemInput);
-                    if(tradeSide)
-                        focusTradeQuantityInput(tradeSide);
+                    const quantityInput = getQuantityInputForAutocomplete(itemInput);
+                    if(quantityInput?.length)
+                        quantityInput.trigger("select");
                     else if(shouldFocusQuantityOnAutocomplete && itemInput === itemNameInput)
                         itemQuantityInput.trigger("select");
                     else
@@ -1681,9 +2211,9 @@ function updateFuzzyMatches(itemInput, fuzzyMatchesHolder)
                 });
             else
             {
-                const tradeSide = getTradeSideForInput(itemInput);
-                if(tradeSide)
-                    focusTradeQuantityInput(tradeSide);
+                const quantityInput = getQuantityInputForAutocomplete(itemInput);
+                if(quantityInput?.length)
+                    quantityInput.trigger("select");
                 else if(shouldFocusQuantityOnAutocomplete && itemInput === itemNameInput)
                     itemQuantityInput.trigger("select");
             }

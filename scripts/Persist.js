@@ -20,12 +20,59 @@ function loadAllFromLocalStorage()
             return {
                 offerItems: row.offerItems.map(item => Object.assign(new Item(), item)),
                 wantItems: row.wantItems.map(item => Object.assign(new Item(), item)),
+                shouldReduceRatio: row.shouldReduceRatio === true,
                 isSelected: false
             };
         });
     }
     else
         tradeRows = [];
+
+    const sExchangeRows = localStorage.getItem("exchangeRows");
+    if(sExchangeRows)
+    {
+        try
+        {
+            const parsedExchangeRows = JSON.parse(sExchangeRows);
+            exchangeRows = {
+                have: normalizeExchangeEntries(parsedExchangeRows.have),
+                want: normalizeExchangeEntries(parsedExchangeRows.want)
+            };
+        }
+        catch(e)
+        {
+            console.log("Failed to load exchange rows --", e);
+            exchangeRows = {have: [], want: []};
+        }
+    }
+    else
+        exchangeRows = {have: [], want: []};
+    const savedExchangeEditorRowCount = parseInt(localStorage.getItem("exchangeEditorRowCount") ?? EXCHANGE_DEFAULT_ROW_COUNT);
+    const savedExchangeItemsPerLine = parseInt(localStorage.getItem("exchangeItemsPerLine") ?? "3");
+    exchangeItemsPerLine = Math.min(6, Math.max(1, Number.isFinite(savedExchangeItemsPerLine) ? savedExchangeItemsPerLine : 3));
+    exchangeItemsPerLineInput?.val(exchangeItemsPerLine);
+    const hasSavedExchangeEntries = exchangeRows.have.some(row => row.some(entry => formatItemName(entry.name ?? "").length)) ||
+        exchangeRows.want.some(row => row.some(entry => formatItemName(entry.name ?? "").length));
+    exchangeEditorRowCount = Math.max(
+        EXCHANGE_DEFAULT_ROW_COUNT,
+        hasSavedExchangeEntries && Number.isFinite(savedExchangeEditorRowCount) ? savedExchangeEditorRowCount : EXCHANGE_DEFAULT_ROW_COUNT,
+        exchangeRows.have.length,
+        exchangeRows.want.length
+    );
+    const savedExchangeEditingSide = localStorage.getItem("exchangeEditingSide");
+    const savedExchangeEditingIndexRaw = localStorage.getItem("exchangeEditingIndex");
+    const savedExchangeEditingIndex = Number(savedExchangeEditingIndexRaw);
+    if(["have", "want"].includes(savedExchangeEditingSide) && savedExchangeEditingIndexRaw !== null && Number.isInteger(savedExchangeEditingIndex))
+    {
+        exchangeEditingSide = savedExchangeEditingSide;
+        exchangeEditingIndex = savedExchangeEditingIndex;
+        exchangeEditorRowCount = Math.max(exchangeEditorRowCount, exchangeEditingIndex + 1);
+    }
+    else
+    {
+        exchangeEditingSide = undefined;
+        exchangeEditingIndex = undefined;
+    }
 
     const sIncludeSettingsInItemList = (localStorage.getItem("includeSettingsInItemList") ?? "true") === "true";
     shouldIncludeSettingsInItemList = sIncludeSettingsInItemList;
@@ -39,11 +86,15 @@ function loadAllFromLocalStorage()
     const legacyItemLists = localStorage.getItem("itemLists");
     const savedBuySellItemLists = localStorage.getItem("buySellItemLists") ?? legacyItemLists;
     const savedTradeItemLists = localStorage.getItem("tradeItemLists");
+    const savedExchangeItemLists = localStorage.getItem("exchangeItemLists");
     buySellActiveItemList = localStorage.getItem("buySellActiveItemList") ?? legacyActiveItemList;
     tradeActiveItemList = localStorage.getItem("tradeActiveItemList") ?? "Default";
+    exchangeActiveItemList = localStorage.getItem("exchangeActiveItemList") ?? "Default";
     buySellItemLists = savedBuySellItemLists ? new Map(JSON.parse(savedBuySellItemLists)) : new Map();
     tradeItemLists = savedTradeItemLists ? new Map(JSON.parse(savedTradeItemLists)) : new Map();
+    exchangeItemLists = savedExchangeItemLists ? new Map(JSON.parse(savedExchangeItemLists)) : new Map();
     syncTradeRowsToActiveItemList(sTradeRows);
+    syncExchangeRowsToActiveItemList(sExchangeRows);
     activateItemListsForCurrentMode();
 
     const sAbbreviationMapping = localStorage.getItem("abbreviationMapping");
@@ -100,6 +151,7 @@ function saveAllToLocalStorage()
 {
     saveItemsToLocalStorage();
     saveTradeRowsToLocalStorage();
+    saveExchangeRowsToLocalStorage();
 
     localStorage.setItem("includeSettingsInItemList", shouldIncludeSettingsInItemList);
     localStorage.setItem("copyCurrentItemsFromItemList", shouldCopyCurrentItemsFromItemList);
@@ -129,7 +181,7 @@ function saveItemsToLocalStorage()
 
 function saveTradeRowsToLocalStorage()
 {
-    const persistedTradeRows = tradeRows.map(row => ({offerItems: row.offerItems, wantItems: row.wantItems}));
+    const persistedTradeRows = tradeRows.map(row => ({offerItems: row.offerItems, wantItems: row.wantItems, shouldReduceRatio: row.shouldReduceRatio === true}));
     const serializedTradeRows = JSON.stringify(persistedTradeRows, (key, value) => Item.fieldsToOmitFromLocalStorage.has(key) ? undefined : value);
     localStorage.setItem("tradeRows", serializedTradeRows);
     syncTradeRowsToActiveItemList(serializedTradeRows);
@@ -142,4 +194,28 @@ function syncTradeRowsToActiveItemList(serializedTradeRows)
         return;
 
     tradeItemLists.get(tradeActiveItemList).tradeRows = serializedTradeRows;
+}
+
+function saveExchangeRowsToLocalStorage()
+{
+    const serializedExchangeRows = JSON.stringify(exchangeRows);
+    localStorage.setItem("exchangeRows", serializedExchangeRows);
+    localStorage.setItem("exchangeEditorRowCount", exchangeEditorRowCount);
+    localStorage.setItem("exchangeItemsPerLine", exchangeItemsPerLine);
+    localStorage.setItem("exchangeEditingSide", exchangeEditingSide ?? "");
+    localStorage.setItem("exchangeEditingIndex", exchangeEditingIndex ?? "");
+    syncExchangeRowsToActiveItemList(serializedExchangeRows);
+    saveItemListCollectionsToLocalStorage();
+}
+
+function syncExchangeRowsToActiveItemList(serializedExchangeRows)
+{
+    if(serializedExchangeRows === null || !exchangeItemLists.has(exchangeActiveItemList))
+        return;
+
+    exchangeItemLists.get(exchangeActiveItemList).exchangeRows = serializedExchangeRows;
+    exchangeItemLists.get(exchangeActiveItemList).exchangeEditorRowCount = String(exchangeEditorRowCount);
+    exchangeItemLists.get(exchangeActiveItemList).exchangeItemsPerLine = String(exchangeItemsPerLine);
+    exchangeItemLists.get(exchangeActiveItemList).exchangeEditingSide = exchangeEditingSide ?? "";
+    exchangeItemLists.get(exchangeActiveItemList).exchangeEditingIndex = exchangeEditingIndex ?? "";
 }

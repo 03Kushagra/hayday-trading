@@ -1,18 +1,21 @@
 let itemsPerRow = 8;
 let tradeRowsPerRow = 2;
 let textListSeparatorSelectedRadio = 0;
+let currentViewMode = "buySell";
+const isExchangeFeatureEnabled = false;
 
 let itemsPerRowSlider, itemsPerRowLabel, itemsPerRowOptionLabel, itemNameInput, itemQuantityInput, itemInfinityQuantityButton, itemPriceOrMultiplierInput, itemTable, normalItemsPlaceholder;
-let normalViewButton, tradeViewButton, itemEditorModeTitle, normalItemEntryHint, normalItemEntryArea, tradeItemEntryArea, normalItemClickInfo, hideInTradeViewElems;
+let normalViewButton, tradeViewButton, exchangeViewButton, itemEditorModeTitle, normalItemEntryHint, normalItemEntryArea, tradeItemEntryArea, exchangeItemEntryArea, normalItemClickInfo, hideInTradeViewElems;
 let tradeOfferNameInput, tradeOfferQuantityInput, tradeWantNameInput, tradeWantQuantityInput, tradeOfferFuzzyMatchesHolder, tradeWantFuzzyMatchesHolder, tradeDisplay;
-let tradeDraftSummary, tradeCancelEditButton;
+let tradeDraftSummary, tradeCancelEditButton, tradeRatioFormatToggleButton;
 let tradeSelectionModeStateSpan, tradeUnselectedVisibilityStateSpan, disableOutsideTradeSelectionModeElems;
+let exchangeDisplay, exchangeItemsPerLineInput, exchangeSideInput, exchangeRowInput, exchangeNameInput, exchangeQuantityInput, exchangeInfinityButton, exchangeSaveItemButton, exchangeRemoveItemButton, exchangeRemoveRowButton, exchangeFuzzyMatchesHolder;
 let bottomText, screenshotRegion, screenshotPriceHolder, leftWatermark;
 let stylingDrawer, stylingDrawerOpenButton, stylingDrawerCloseButton, advancedSettingsDrawerContent;
 let generatedImageBackgroundModeInput, generatedImagePresetInput, generatedImagePresetLabel, generatedImageSolidPaletteField, generatedImageBackgroundColorInput, generatedImageGradientColorInput, generatedImageGradientAngleInput, generatedImageGradientAngleLabel, generatedImageBorderColorInput, generatedImageBorderThicknessInput, generatedImageBorderThicknessOutput, generatedImageTextColorInput, generatedImageFontInput, generatedImageBottomTextInput, generatedImageShowBottomTextInput, generatedImageCreditInput, generatedImageGradientFields;
 let generatedImagePaddingTopInput, generatedImagePaddingRightInput, generatedImagePaddingBottomInput, generatedImagePaddingLeftInput, generatedImagePaddingTopOutput, generatedImagePaddingRightOutput, generatedImagePaddingBottomOutput, generatedImagePaddingLeftOutput, generatedImagePaddingResetButton;
 let generatedImageShowItemQuantityInput, generatedImageEnableInfinityInput, generatedImageItemQuantitySizeInput, generatedImageItemQuantitySizeOutput, generatedImageShowItemPriceInput, generatedImageItemPriceSizeInput, generatedImageItemPriceSizeOutput;
-let suggestionOverlayShowButton, suggestionForm, suggestionSubmitButton, suggestionLoadingWheel, suggestionStatus, suggestionDiscordInput, suggestionIncognitoInput, importFileInput, itemListDropdown, deleteItemListButton, createItemListInput, createItemListButton, includeSettingsInItemListCheckBox, copyCurrentItemsFromItemListCheckBox, abbreviationMappingTable, textListSeparatorRadios, textListCustomSeparatorInput, textListSeparatorCustomRadio, textListFormatInput, priceCalculationItemInput, defaultQuantityInput, defaultPriceOrMultiplierInput, refocusNameOnSubmitCheckBox, focusQuantityOnAutocompleteCheckBox, ignoreLocaleCheckBox ;
+let suggestionOverlayShowButton, changelogOverlayShowButton, suggestionForm, suggestionSubmitButton, suggestionLoadingWheel, suggestionStatus, suggestionDiscordInput, suggestionIncognitoInput, importFileInput, itemListDropdown, deleteItemListButton, createItemListInput, createItemListButton, includeSettingsInItemListCheckBox, copyCurrentItemsFromItemListCheckBox, abbreviationMappingTable, textListSeparatorRadios, textListCustomSeparatorInput, textListSeparatorCustomRadio, textListFormatInput, priceCalculationItemInput, defaultQuantityInput, defaultPriceOrMultiplierInput, refocusNameOnSubmitCheckBox, focusQuantityOnAutocompleteCheckBox, ignoreLocaleCheckBox ;
 let priceCalculationModeStateSpan;
 let disableInPriceCalculationModeElems, disableOutsidePriceCalculationModeElems;
 let equationVisibilityStateSpan, unselectedItemsVisibilityStateSpan;
@@ -23,7 +26,7 @@ let totalSelectedPriceArea, totalSelectedPriceMessageHolder, totalSelectedPriceE
 let coinImageUrl;
 let priceCalculationItem;
 let priceCalculationModeSelectionInfo;
-let failedCopyOverlay, contactOverlay, suggestionOverlay;
+let failedCopyOverlay, contactOverlay, suggestionOverlay, changelogOverlay;
 let copyImageLoadingWheel, copyImageStatus;
 let activeItemList;
 let shouldIncludeSettingsInItemList, shouldCopyCurrentItemsFromItemList;
@@ -41,10 +44,17 @@ let tradeDraftPendingPromises = [];
 let tradeDraftOrder = 0;
 let editingTradeRowIndex = undefined;
 let tradeOfferInputItemCache, tradeWantInputItemCache;
+let exchangeRows = {have: [], want: []};
+let exchangeEditorRowCount = 1;
+let exchangeItemsPerLine = 3;
+let exchangeUpdateToken = 0;
+let exchangeEditingSide = undefined;
+let exchangeEditingIndex = undefined;
+let exchangeEditingItemIndex = undefined;
 
 let itemLists = new Map();
-let buySellItemLists = new Map(), tradeItemLists = new Map();
-let buySellActiveItemList = "Default", tradeActiveItemList = "Default";
+let buySellItemLists = new Map(), tradeItemLists = new Map(), exchangeItemLists = new Map();
+let buySellActiveItemList = "Default", tradeActiveItemList = "Default", exchangeActiveItemList = "Default";
 
 let abbreviationMapping = new Map([
     ["tnt", "tnt barrel"],

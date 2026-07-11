@@ -60,7 +60,7 @@ async function submitSuggestionForm(event)
     if(!$("#suggestionScreenshotInput")[0].files.length)
         formData.delete("screenshot");
     formData.append("_subject", "Hay Day Trading suggestion");
-    formData.append("view", getIsInTradeView() ? "Trade" : "Buy / Sell");
+    formData.append("view", getCurrentModeLabel());
     formData.append("sheet", getCurrentModeActiveItemList());
     formData.append("page", window.location.href);
     formData.append("submittedAt", new Date().toISOString());
@@ -128,20 +128,23 @@ function setUpStylingDrawer()
     {
         normalizeGeneratedImageColors();
         applyGeneratedImageStyles();
+        persistGeneratedImageStyleChange();
     });
     backgroundInputs.on("change", () =>
     {
         normalizeGeneratedImageColors();
         applyGeneratedImageStyles();
-        saveAllToLocalStorage();
-        rescaleScreenshotRegion();
+        persistGeneratedImageStyleChange();
     });
-    styleInputs.on("input", applyGeneratedImageStyles);
+    styleInputs.on("input", () =>
+    {
+        applyGeneratedImageStyles();
+        persistGeneratedImageStyleChange();
+    });
     styleInputs.on("change", () =>
     {
         applyGeneratedImageStyles();
-        saveAllToLocalStorage();
-        rescaleScreenshotRegion();
+        persistGeneratedImageStyleChange();
     });
     generatedImagePaddingResetButton.on("click", () =>
     {
@@ -150,43 +153,49 @@ function setUpStylingDrawer()
         generatedImagePaddingBottomInput.val(generatedImageDefaultPadding);
         generatedImagePaddingLeftInput.val(generatedImageDefaultPadding);
         applyGeneratedImageStyles();
-        saveAllToLocalStorage();
-        rescaleScreenshotRegion();
+        persistGeneratedImageStyleChange();
     });
     generatedImagePresetInput.on("change", () =>
     {
         applyGeneratedImagePreset();
         applyGeneratedImageStyles();
-        saveAllToLocalStorage();
-        rescaleScreenshotRegion();
+        persistGeneratedImageStyleChange();
     });
     $(".stylingColorSwatch").on("click", event =>
     {
         const swatch = $(event.currentTarget);
         $(`#${swatch.data("target")}`).val(swatch.data("color"));
         applyGeneratedImageStyles();
-        saveAllToLocalStorage();
-        rescaleScreenshotRegion();
+        persistGeneratedImageStyleChange();
     });
 
     generatedImageBottomTextInput.on("input", event =>
     {
         setGeneratedImageBottomText(event.target.value);
+        persistGeneratedImageStyleChange();
     });
     generatedImageBottomTextInput.on("change", event =>
     {
         setGeneratedImageBottomText(event.target.value);
-        saveAllToLocalStorage();
-        rescaleScreenshotRegion();
+        persistGeneratedImageStyleChange();
     });
 
-    generatedImageCreditInput.on("input", applyGeneratedImageStyles);
+    generatedImageCreditInput.on("input", () =>
+    {
+        applyGeneratedImageStyles();
+        persistGeneratedImageStyleChange();
+    });
     generatedImageCreditInput.on("change", () =>
     {
         applyGeneratedImageStyles();
-        saveAllToLocalStorage();
-        rescaleScreenshotRegion();
+        persistGeneratedImageStyleChange();
     });
+}
+
+function persistGeneratedImageStyleChange()
+{
+    storeItemList();
+    rescaleScreenshotRegion();
 }
 
 function openStylingDrawer(focusTarget = "")
@@ -323,7 +332,11 @@ function applyGeneratedImageStyles()
 
 function getGeneratedImageStoragePrefix()
 {
-    return getIsInTradeView() ? "trade" : "buySell";
+    if(getIsInTradeView())
+        return "trade";
+    if(getIsInExchangeView())
+        return "exchange";
+    return "buySell";
 }
 
 function getGeneratedImageStorageKey(settingName)
@@ -338,7 +351,7 @@ function getStoredGeneratedImageSetting(settingName, legacyKey, fallback)
 
 function loadGeneratedImageStylesForCurrentMode()
 {
-    const isTradeView = getIsInTradeView();
+    const isTradeLikeView = getIsInTradeLikeView();
     const bottomTextValue = getStoredGeneratedImageSetting("BottomText", "bottomText", "Partial Accepted");
     const savedGeneratedImageTextColor = getStoredGeneratedImageSetting("TextColor", "generatedImageTextColor", "#ffffff");
     const savedGeneratedImageCredit = getStoredGeneratedImageSetting("Credit", "generatedImageCredit", "Gamingwith3K");
@@ -355,7 +368,7 @@ function loadGeneratedImageStylesForCurrentMode()
     generatedImageGradientAngleInput.val("135");
     generatedImageBorderColorInput.val(getStoredGeneratedImageSetting("BorderColor", "generatedImageBorderColor", "#ffffff"));
     const savedBorderThickness = localStorage.getItem(getGeneratedImageStorageKey("BorderThickness"));
-    generatedImageBorderThicknessInput.val(savedBorderThickness ?? (isTradeView ? "3" : localStorage.getItem("generatedImageBorderThickness") ?? "1"));
+    generatedImageBorderThicknessInput.val(savedBorderThickness ?? (isTradeLikeView ? "3" : localStorage.getItem("generatedImageBorderThickness") ?? "1"));
     generatedImageTextColorInput.val(savedGeneratedImageTextColor);
     generatedImageFontInput.val("Georgia");
     generatedImageShowBottomTextInput.prop("checked", getStoredGeneratedImageSetting("ShowBottomText", "generatedImageShowBottomText", "true") === "true");
@@ -429,10 +442,14 @@ function applyGeneratedImagePreset(shouldApplyMode = true)
         sunsetPeach: {mode: "gradient", primary: "#633544", secondary: "#1a1016", text: "#ffffff", angle: "135"},
         mintSky: {mode: "radial", primary: "#31564c", secondary: "#0d1716", text: "#ffffff", angle: "135"},
         berryCream: {mode: "gradient", primary: "#51385c", secondary: "#15101a", text: "#ffffff", angle: "135"},
+        auroraPulse: {mode: "gradient", primary: "#07111f", secondary: "#00d4ff", text: "#ffffff", angle: "135"},
+        midnightCarnival: {mode: "gradient", primary: "#07111f", secondary: "#7c3aed", text: "#ffffff", angle: "120"},
         morningMist: {mode: "radial", primary: "#f7fbff", secondary: "#c7d9ee", text: "#151a20", angle: "135"},
         peachBloom: {mode: "gradient", primary: "#fff0dc", secondary: "#f4b6bd", text: "#25171a", angle: "135"},
         mintCream: {mode: "radial", primary: "#f2fff8", secondary: "#a8dfc4", text: "#10241b", angle: "135"},
-        lavenderSky: {mode: "gradient", primary: "#f8f1ff", secondary: "#c7b8ed", text: "#211831", angle: "135"}
+        lavenderSky: {mode: "gradient", primary: "#f8f1ff", secondary: "#c7b8ed", text: "#211831", angle: "135"},
+        prismFrost: {mode: "gradient", primary: "#f8fbff", secondary: "#7c3aed", text: "#111827", angle: "135"},
+        citrusSky: {mode: "radial", primary: "#fff7ad", secondary: "#55d6ff", text: "#10202f", angle: "135"}
     };
     const preset = presets[generatedImagePresetInput.val()];
     if(!preset)
@@ -579,17 +596,29 @@ function importAll(jsonBlob)
         localStorage.setItem(key, value);
 
     loadAllFromLocalStorage();
-    updateItemLayout();
+    if(getIsInTradeView())
+        updateTradeDisplay();
+    else if(getIsInExchangeView())
+    {
+        updateExchangeEditorRows();
+        updateExchangeDisplay();
+    }
+    else
+        updateItemLayout();
 }
 
 function getItemListContentKey()
 {
-    return getIsInTradeView() ? "tradeRows" : "items";
+    if(getIsInTradeView())
+        return "tradeRows";
+    if(getIsInExchangeView())
+        return "exchangeRows";
+    return "items";
 }
 
 function getEmptyItemListContent()
 {
-    return JSON.stringify([]);
+    return getIsInExchangeView() ? JSON.stringify({have: [], want: []}) : JSON.stringify([]);
 }
 
 function getDefaultItemListSettings()
@@ -602,7 +631,7 @@ function getDefaultItemListSettings()
         [`${storagePrefix}GeneratedImageBackgroundColor`]: "#3f4652",
         [`${storagePrefix}GeneratedImageGradientColor`]: "#111318",
         [`${storagePrefix}GeneratedImageBorderColor`]: "#ffffff",
-        [`${storagePrefix}GeneratedImageBorderThickness`]: getIsInTradeView() ? "3" : "1",
+        [`${storagePrefix}GeneratedImageBorderThickness`]: getIsInTradeLikeView() ? "3" : "1",
         [`${storagePrefix}GeneratedImageTextColor`]: "#ffffff",
         [`${storagePrefix}GeneratedImageShowBottomText`]: "true",
         [`${storagePrefix}GeneratedImageCredit`]: "Gamingwith3K",
@@ -619,6 +648,14 @@ function getDefaultItemListSettings()
 
     if(getIsInTradeView())
         return {...styleDefaults, tradeRowsPerRow: "2"};
+    if(getIsInExchangeView())
+        return {
+            ...styleDefaults,
+            exchangeEditorRowCount: String(EXCHANGE_DEFAULT_ROW_COUNT),
+            exchangeItemsPerLine: "3",
+            exchangeEditingSide: "",
+            exchangeEditingIndex: ""
+        };
 
     return {
         ...styleDefaults,
@@ -654,12 +691,20 @@ function createItemListObject(shouldIncludeContent, shouldIncludeSettings)
 
 function getCurrentModeItemLists()
 {
-    return getIsInTradeView() ? tradeItemLists : buySellItemLists;
+    if(getIsInTradeView())
+        return tradeItemLists;
+    if(getIsInExchangeView())
+        return exchangeItemLists;
+    return buySellItemLists;
 }
 
 function getCurrentModeActiveItemList()
 {
-    return getIsInTradeView() ? tradeActiveItemList : buySellActiveItemList;
+    if(getIsInTradeView())
+        return tradeActiveItemList;
+    if(getIsInExchangeView())
+        return exchangeActiveItemList;
+    return buySellActiveItemList;
 }
 
 function setCurrentModeActiveItemList(name)
@@ -667,16 +712,29 @@ function setCurrentModeActiveItemList(name)
     activeItemList = name;
     if(getIsInTradeView())
         tradeActiveItemList = name;
+    else if(getIsInExchangeView())
+        exchangeActiveItemList = name;
     else
         buySellActiveItemList = name;
+}
+
+function getCurrentModeLabel()
+{
+    if(getIsInTradeView())
+        return "Trade";
+    if(getIsInExchangeView())
+        return "Exchange";
+    return "Buy / Sell";
 }
 
 function saveItemListCollectionsToLocalStorage()
 {
     localStorage.setItem("buySellActiveItemList", buySellActiveItemList);
     localStorage.setItem("tradeActiveItemList", tradeActiveItemList);
+    localStorage.setItem("exchangeActiveItemList", exchangeActiveItemList);
     localStorage.setItem("buySellItemLists", JSON.stringify([...buySellItemLists]));
     localStorage.setItem("tradeItemLists", JSON.stringify([...tradeItemLists]));
+    localStorage.setItem("exchangeItemLists", JSON.stringify([...exchangeItemLists]));
 }
 
 function refreshItemListDropdown()
@@ -764,6 +822,11 @@ function loadItemList()
         updateTradeDisplay();
         updateTradeDraftSummary();
         updateTradeSubmitButtonText();
+    }
+    else if(getIsInExchangeView())
+    {
+        updateExchangeEditorRows();
+        updateExchangeDisplay();
     }
     else
         updateItemLayout();
