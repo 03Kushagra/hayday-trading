@@ -536,7 +536,7 @@ body.tradeView .tradeDeleteButton:hover:enabled
     justify-content: center;
     flex-wrap: wrap;
     gap: 6px;
-    max-width: 370px;
+    max-width: 520px;
     box-sizing: border-box;
 }
 
